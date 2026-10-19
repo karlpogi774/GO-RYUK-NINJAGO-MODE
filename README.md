@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Press+Start+2P&weight=900&size=45&pause=1000&color=CE1126&center=true&vCenter=true&width=600&lines=TITO VERANIO KARL &color=0038A8" alt="TITO VERANIO KARL" />
+  <img src="https://readme-typing-svg.demolab.com?font=Press+Start+2P&weight=900&size=45&pause=1000&color=CE1126&center=true&vCenter=true&width=600&lines=TITO KARL VERANIO&color=0038A8" alt="NULLSECPH" />
 </p>
 
 <p align="center">
