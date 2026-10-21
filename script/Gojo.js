@@ -1,417 +1,196 @@
 const fs = require("fs");
 const path = require("path");
 
-const ADMIN_IDS = [
-  "61594055835097",
-  "61595507156493"
-];
+const ADMIN_ID = "61595507156493";
+const TARGET_NAME = "Jehosh pogi";
+const DEFAULT_EMOJI = "🔥";
+const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-const DATA_FILE = path.join(__dirname, "gojo_exact_data.json");
-
-const DEFAULT_DATA = {
-  active: true,
-  autoReact: true,
-  delay: 2000,
-  totalReplies: 0,
-  maxRepliesPerWindow: 5,
-  rateLimitWindowMs: 60000,
-  userCooldownMs: 10000,
-  triggers: ["gojo", "satoru", "infinity"]
-};
-
-const MAX_QUEUE = 25;
-const MAX_SEEN_MESSAGES = 5000;
-const MAX_COOLDOWN_ENTRIES = 3000;
-
-const USER_COOLDOWN = new Map();
-const SEEN_MESSAGES = new Set();
-const REPLY_QUEUE = [];
-const REPLY_TIMES = [];
-
-let queueRunning = false;
-
-const GOJO_QUOTES = [
-  "♾️ The strongest is here. Relax, I've got this.",
-  "😎 Don't worry. I'm the strongest.",
-  "♾️ Infinity protects what matters.",
-  "💙 Relax. Everything is under control.",
-  "👁️ You called Gojo Satoru?",
-  "🔥 The difference between us is absolute.",
-  "♾️ My technique is on another level.",
-  "😏 Sorry, I'm too strong.",
-  "💙 Stay calm. The strongest has arrived.",
-  "👑 Gojo Satoru. Remember the name."
-];
-
-function isAdmin(senderID) {
-  return ADMIN_IDS.includes(String(senderID));
-}
-
-function loadSystemData() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const saved = JSON.parse(
-        fs.readFileSync(DATA_FILE, "utf8")
-      );
-
-      return {
-        ...DEFAULT_DATA,
-        ...saved
-      };
-    }
-  } catch (error) {
-    console.error("[GOJO] Data load error:", error.message);
-  }
-
-  return { ...DEFAULT_DATA };
-}
-
-let SYSTEM_DATA = loadSystemData();
-
-function saveSystemData() {
-  try {
-    const tempFile = DATA_FILE + ".tmp";
-
-    fs.writeFileSync(
-      tempFile,
-      JSON.stringify(SYSTEM_DATA, null, 2),
-      "utf8"
-    );
-
-    fs.renameSync(tempFile, DATA_FILE);
-  } catch (error) {
-    console.error("[GOJO] Data save error:", error.message);
-  }
-}
-
-function randomQuote() {
-  return GOJO_QUOTES[
-    Math.floor(Math.random() * GOJO_QUOTES.length)
-  ];
-}
-
-function rememberMessage(messageID) {
-  if (SEEN_MESSAGES.has(messageID)) {
-    return false;
-  }
-
-  SEEN_MESSAGES.add(messageID);
-
-  while (SEEN_MESSAGES.size > MAX_SEEN_MESSAGES) {
-    const oldest = SEEN_MESSAGES.values().next().value;
-    SEEN_MESSAGES.delete(oldest);
-  }
-
-  return true;
-}
-
-function trimCooldowns() {
-  if (USER_COOLDOWN.size <= MAX_COOLDOWN_ENTRIES) {
-    return;
-  }
-
-  const entriesToRemove =
-    USER_COOLDOWN.size - MAX_COOLDOWN_ENTRIES;
-
-  let removed = 0;
-
-  for (const key of USER_COOLDOWN.keys()) {
-    USER_COOLDOWN.delete(key);
-    removed++;
-
-    if (removed >= entriesToRemove) {
-      break;
-    }
-  }
-}
-
-function isCommandMessage(body) {
-  return /^\s*[!/](gojo|help)\b/i.test(
-    String(body || "")
-  );
-}
-
-function matchesTrigger(body, data) {
-  const text = String(body || "").toLowerCase();
-
-  return (data.triggers || []).some(trigger => {
-    const normalized = String(trigger).toLowerCase().trim();
-
-    if (!normalized) return false;
-
-    return text.includes(normalized);
-  });
-}
-
-function canReplyNow() {
-  const now = Date.now();
-
-  while (
-    REPLY_TIMES.length &&
-    now - REPLY_TIMES[0] >= SYSTEM_DATA.rateLimitWindowMs
-  ) {
-    REPLY_TIMES.shift();
-  }
-
-  return (
-    REPLY_TIMES.length <
-    SYSTEM_DATA.maxRepliesPerWindow
-  );
-}
-
-function safeReact(api, messageID) {
-  if (typeof api.setMessageReaction !== "function") {
-    return;
-  }
-
-  api.setMessageReaction(
-    "😆",
-    messageID,
-    error => {
-      if (error) {
-        console.error("[GOJO] Reaction failed:", error.message || error);
-      }
-    },
-    true
-  );
-}
-
-function enqueueReply(item) {
-  if (REPLY_QUEUE.length >= MAX_QUEUE) {
-    console.warn("[GOJO] Queue full; message skipped.");
-    return false;
-  }
-
-  REPLY_QUEUE.push(item);
-  processQueue();
-
-  return true;
-}
-
-function processQueue() {
-  if (queueRunning || REPLY_QUEUE.length === 0) {
-    return;
-  }
-
-  queueRunning = true;
-
-  (async () => {
-    try {
-      while (REPLY_QUEUE.length > 0) {
-        const item = REPLY_QUEUE.shift();
-
-        if (!SYSTEM_DATA.active) {
-          continue;
-        }
-
-        if (!canReplyNow()) {
-          console.warn("[GOJO] Rate limit reached; queued reply skipped.");
-          continue;
-        }
-
-        await new Promise(resolve => {
-          setTimeout(resolve, SYSTEM_DATA.delay);
-        });
-
-        if (!SYSTEM_DATA.active) {
-          continue;
-        }
-
-        if (!canReplyNow()) {
-          continue;
-        }
-
-        await new Promise(resolve => {
-          item.api.sendMessage(
-            `♾️ GOJO SATORU\n\n${randomQuote()}`,
-            item.threadID,
-            error => {
-              if (error) {
-                console.error(
-                  "[GOJO] Send failed:",
-                  error.message || error
-                );
-              } else {
-                REPLY_TIMES.push(Date.now());
-                SYSTEM_DATA.totalReplies =
-                  (SYSTEM_DATA.totalReplies || 0) + 1;
-                saveSystemData();
-              }
-
-              resolve();
-            },
-            item.messageID
-          );
-        });
-      }
-    } catch (error) {
-      console.error("[GOJO] Queue error:", error.message);
-    } finally {
-      queueRunning = false;
-
-      if (REPLY_QUEUE.length > 0) {
-        processQueue();
-      }
-    }
-  })();
-}
+// Anti-spam configuration (Max 5 messages per 5 seconds)
+const SPAM_THRESHOLD = 5;
+const SPAM_INTERVAL = 5000;
+const userMessageLogs = {};
 
 module.exports.config = {
   name: "gojo",
-  version: "10.0.0",
+  version: "2.0.0",
   hasPermission: 0,
-  credits: "Gojo Infinity Framework",
-  description: "Gojo trigger replies, auto-reaction and admin controls.",
+  credits: "sinzu / edited",
+  description: "Infinite auto-roast, anti-spam, auto-react, auto-nickname, and auto-group name lock with Admin protection.",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/gojo on | off | status | reacton | reactoff | quote",
-  cooldowns: 3
+  usages: "/gojo on — start infinite global features\n/gojo off — stop\n/gojo status — check status",
+  cooldowns: 5
 };
 
-module.exports.run = async function ({ api, event, args }) {
-  const senderID = String(event.senderID || "");
-  const threadID = event.threadID;
-  const action = String(args?.[0] || "help").toLowerCase();
+// English roasts
+const ROASTS = [
+  "Bro really thought that message was necessary 💀",
+  "The confidence… the delusion… unmatched.",
+  "Say less, we already lost brain cells reading that.",
+  "You typed all that just to embarrass yourself?",
+  "Main character energy but the plot is mid.",
+  "Who hurt you? Because that sentence hurt all of us.",
+  "Please stop before the group chat files a restraining order.",
+  "You really just said that out loud… in text… permanently.",
+  "The audacity is loud but the intelligence is on mute.",
+  "This is why group chats need a mute button for specific people.",
+  "Bro woke up and chose violence against the English language.",
+  "I’m not even mad, I’m just disappointed… and second-hand embarrassed.",
+  "Your message just aged like milk left in the sun.",
+  "Somewhere a grammar teacher is crying.",
+  "This energy is giving ‘I peaked in high school’.",
+  "You dropped that like it was fire. It was not.",
+  "The group chat was peaceful until you arrived.",
+  "Please log off for the sake of everyone’s mental health.",
+  "That was a choice… a bold, terrible choice.",
+  "I’m taking notes on how not to communicate."
+];
 
-  if (!isAdmin(senderID)) {
-    return api.sendMessage(
-      "⛔ Admin only. / Mga admin lang ang puwedeng gumamit nito.",
-      threadID
-    );
-  }
-
-  switch (action) {
-    case "on":
-      SYSTEM_DATA.active = true;
-      saveSystemData();
-
-      return api.sendMessage(
-        "♾️ Gojo is ON.\nGojo is ready to respond to trigger messages.\nHanda nang sumagot si Gojo kapag may trigger.",
-        threadID
-      );
-
-    case "off":
-      SYSTEM_DATA.active = false;
-      REPLY_QUEUE.length = 0;
-      saveSystemData();
-
-      return api.sendMessage(
-        "💤 Gojo is OFF.\nNaka-off na ang Gojo.",
-        threadID
-      );
-
-    case "status":
-      return api.sendMessage(
-        [
-          "♾️ GOJO STATUS",
-          `Active: ${SYSTEM_DATA.active}`,
-          `Auto-react: ${SYSTEM_DATA.autoReact}`,
-          `Total replies: ${SYSTEM_DATA.totalReplies}`,
-          `Queue: ${REPLY_QUEUE.length}/${MAX_QUEUE}`,
-          `Rate limit: ${SYSTEM_DATA.maxRepliesPerWindow} replies per ${SYSTEM_DATA.rateLimitWindowMs / 1000}s`,
-          `Admins: ${ADMIN_IDS.join(", ")}`
-        ].join("\n"),
-        threadID
-      );
-
-    case "reacton":
-      SYSTEM_DATA.autoReact = true;
-      saveSystemData();
-
-      return api.sendMessage(
-        "😆 Auto-react enabled. / Naka-on na ang auto-react.",
-        threadID
-      );
-
-    case "reactoff":
-      SYSTEM_DATA.autoReact = false;
-      saveSystemData();
-
-      return api.sendMessage(
-        "🔕 Auto-react disabled. / Naka-off na ang auto-react.",
-        threadID
-      );
-
-    case "quote":
-      return api.sendMessage(randomQuote(), threadID);
-
-    case "help":
-    default:
-      return api.sendMessage(
-        [
-          "♾️ GOJO COMMANDS",
-          "/gojo on - Enable Gojo",
-          "/gojo off - Disable Gojo",
-          "/gojo status - View status",
-          "/gojo reacton - Enable reactions",
-          "/gojo reactoff - Disable reactions",
-          "/gojo quote - Random quote",
-          "",
-          "Admin only / Para lang sa admins."
-        ].join("\n"),
-        threadID
-      );
-  }
-};
-
-module.exports.handleEvent = async function ({ api, event }) {
+function loadData() {
   try {
-    const threadID = event.threadID;
-    const senderID = String(event.senderID || "");
-    const messageID = String(event.messageID || "");
-    const body = String(event.body || "");
+    if (fs.existsSync(DATA_PATH)) {
+      return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
+    }
+  } catch {}
+  return { active: false, activatedBy: null };
+}
 
-    if (!threadID || !senderID || !messageID) {
-      return;
+function saveData(data) {
+  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
+}
+
+function isActive() {
+  const data = loadData();
+  return !!data.active;
+}
+
+// ===== EVENT HANDLER (Runs on all messages & GC actions) =====
+module.handleEvent = async function ({ api, event }) {
+  const { threadID, senderID, body, messageID, isGroup } = event;
+
+  // Ignore bot's own actions or commands
+  if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
+
+  if (!isActive()) return;
+
+  // 1. AUTO SELF-REACT
+  try {
+    api.setMessageReaction(DEFAULT_EMOJI, messageID, () => {}, true);
+  } catch (err) {}
+
+  // 2. ANTI-SPAM PROTECTION
+  const now = Date.now();
+  if (!userMessageLogs[senderID]) userMessageLogs[senderID] = [];
+  userMessageLogs[senderID] = userMessageLogs[senderID].filter(t => now - t < SPAM_INTERVAL);
+  userMessageLogs[senderID].push(now);
+
+  if (userMessageLogs[senderID].length > SPAM_THRESHOLD) {
+    api.sendMessage("⚠️ Spammer detected! Please slow down.", threadID);
+    return;
+  }
+
+  // 3. AUTO CHANGE GROUP NAME & MEMBER NICKNAMES
+  if (isGroup) {
+    api.getThreadInfo(threadID, (err, info) => {
+      if (err || !info) return;
+
+      // Auto Group Name Lock
+      if (info.threadName !== TARGET_NAME) {
+        api.setTitle(TARGET_NAME, threadID, () => {});
+      }
+
+      // Auto Sender Nickname Lock
+      if (info.nicknames && info.nicknames[senderID] !== TARGET_NAME) {
+        api.changeNickname(TARGET_NAME, threadID, senderID, () => {});
+      }
+    });
+  }
+
+  // 4. AUTO-ROAST CHAT LINES
+  const count = Math.floor(Math.random() * 4) + 4; // Pick 4 to 7 lines
+  const shuffled = [...ROASTS].sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, count);
+
+  for (let i = 0; i < selected.length; i++) {
+    setTimeout(() => {
+      api.sendMessage(selected[i], threadID);
+    }, i * 800);
+  }
+};
+
+// ===== COMMAND HANDLER =====
+module.run = async function ({ api, event, args }) {
+  const { threadID, messageID, senderID, isGroup } = event;
+  const sub = (args[0] || "").toLowerCase();
+  const data = loadData();
+
+  // Admin Verification Check
+  if (senderID !== ADMIN_ID) {
+    return api.sendMessage("❌ Access Denied: Only Admin (ID: 61595507156493) can use this command.", threadID, messageID);
+  }
+
+  if (sub === "on") {
+    data.active = true;
+    data.activatedBy = senderID;
+    data.activatedAt = Date.now();
+    saveData(data);
+
+    // Enforce nicknames on all members in the GC when toggled ON
+    if (isGroup) {
+      api.getThreadInfo(threadID, (err, info) => {
+        if (!err && info && info.participantIDs) {
+          info.participantIDs.forEach((id) => {
+            if (!info.nicknames || info.nicknames[id] !== TARGET_NAME) {
+              api.changeNickname(TARGET_NAME, threadID, id, () => {});
+            }
+          });
+        }
+      });
+      api.setTitle(TARGET_NAME, threadID, () => {});
     }
 
-    const botID = String(
-      typeof api.getCurrentUserID === "function"
-        ? api.getCurrentUserID()
-        : ""
-    );
-
-    if (senderID === botID || isAdmin(senderID)) {
-      return;
-    }
-
-    if (!SYSTEM_DATA.active || isCommandMessage(body)) {
-      return;
-    }
-
-    if (!rememberMessage(messageID)) {
-      return;
-    }
-
-    if (SYSTEM_DATA.autoReact) {
-      safeReact(api, messageID);
-    }
-
-    if (!matchesTrigger(body, SYSTEM_DATA)) {
-      return;
-    }
-
-    const cooldownKey = `${threadID}:${senderID}`;
-    const now = Date.now();
-    const lastTime = USER_COOLDOWN.get(cooldownKey) || 0;
-
-    if (now - lastTime < SYSTEM_DATA.userCooldownMs) {
-      return;
-    }
-
-    if (!canReplyNow()) {
-      return;
-    }
-
-    USER_COOLDOWN.set(cooldownKey, now);
-    trimCooldowns();
-
-    enqueueReply({
-      api,
+    return api.sendMessage(
+      `🔥 GOJO BOT: ACTIVATED (INFINITE DURATION)\n\n` +
+      `• Auto-Roast: ACTIVE\n` +
+      `• Anti-Spam: ENABLED\n` +
+      `• Auto Self-React: ACTIVE (${DEFAULT_EMOJI})\n` +
+      `• Group Name Locked to: "${TARGET_NAME}"\n` +
+      `• Member Nicknames Locked to: "${TARGET_NAME}"\n\n` +
+      `Use /gojo off to stop.`,
       threadID,
       messageID
-    });
-  } catch (error) {
-    console.error("[GOJO] Event error:", error.message);
+    );
   }
+
+  if (sub === "off") {
+    if (isActive()) {
+      data.active = false;
+      saveData(data);
+      return api.sendMessage("✅ All Gojo bot active features turned OFF.", threadID, messageID);
+    }
+    return api.sendMessage("Gojo bot is not currently active.", threadID, messageID);
+  }
+
+  if (sub === "status") {
+    const statusStr = isActive() ? "ACTIVE (Infinite Duration)" : "OFF";
+    return api.sendMessage(
+      `🤖 GOJO BOT STATUS\n` +
+      `Status: ${statusStr}\n` +
+      `Admin ID: ${ADMIN_ID}\n` +
+      `Target Name: ${TARGET_NAME}`,
+      threadID,
+      messageID
+    );
+  }
+
+  return api.sendMessage(
+    `Usage:\n` +
+    `/gojo on — Start infinite global features\n` +
+    `/gojo off — Stop all features\n` +
+    `/gojo status — Check active status\n\n` +
+    `Admin Only (ID: 61595507156493)`,
+    threadID,
+    messageID
+  );
 };
