@@ -64,7 +64,7 @@ function isActive() {
 
 // ===== SLOW-MOTION & ANTI-SPAM SYSTEM =====
 const lastResponseTime = new Map();
-const COOLDOWN_DELAY = 2000; // 2 Seconds Slow Motion Duration for Auto Reply
+const COOLDOWN_DELAY = 8000; // 2 Seconds Slow Motion Duration for Auto Reply
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
