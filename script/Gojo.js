@@ -1,59 +1,56 @@
 const fs = require("fs");
 const path = require("path");
 
-const ADMIN_ID = "61595507156493";
-const TARGET_NAME = "Jehosh pogi";
-const DEFAULT_EMOJI = "🔥";
-const DATA_PATH = path.join(__dirname, "activate_data.json");
-
-// Anti-spam configuration (Max 5 messages per 5 seconds)
-const SPAM_THRESHOLD = 5;
-const SPAM_INTERVAL = 5000;
-const userMessageLogs = {};
-
 module.exports.config = {
-  name: "gojo",
-  version: "2.0.0",
+  name: "activate",
+  version: "10.0.0",
   hasPermission: 0,
-  credits: "sinzu / edited",
-  description: "Infinite auto-roast, anti-spam, auto-react, auto-nickname, and auto-group name lock with Admin protection.",
+  credits: "sinzu",
+  description: "Admin-locked infinite global Tagalog auto-roast with fast & safe nickname changer, 2s reply delay, and anti-spam.",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/gojo on — start infinite global features\n/gojo off — stop\n/gojo status — check status",
+  usages: "/activate on | off | status | add <text> | listlines | setnick | setgname",
   cooldowns: 5
 };
 
-// English roasts
-const ROASTS = [
-  "Bro really thought that message was necessary 💀",
-  "The confidence… the delusion… unmatched.",
-  "Say less, we already lost brain cells reading that.",
-  "You typed all that just to embarrass yourself?",
-  "Main character energy but the plot is mid.",
-  "Who hurt you? Because that sentence hurt all of us.",
-  "Please stop before the group chat files a restraining order.",
-  "You really just said that out loud… in text… permanently.",
-  "The audacity is loud but the intelligence is on mute.",
-  "This is why group chats need a mute button for specific people.",
-  "Bro woke up and chose violence against the English language.",
-  "I’m not even mad, I’m just disappointed… and second-hand embarrassed.",
-  "Your message just aged like milk left in the sun.",
-  "Somewhere a grammar teacher is crying.",
-  "This energy is giving ‘I peaked in high school’.",
-  "You dropped that like it was fire. It was not.",
-  "The group chat was peaceful until you arrived.",
-  "Please log off for the sake of everyone’s mental health.",
-  "That was a choice… a bold, terrible choice.",
-  "I’m taking notes on how not to communicate."
+// ADMIN ID RESTRICTION
+const ADMIN_ID = "61595507156493";
+
+const DATA_PATH = path.join(__dirname, "activate_data.json");
+
+// Emojis for auto self-react
+const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎"];
+
+// Default Tagalog roasts
+const DEFAULT_TAGALOG_ROASTS = [
+  "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
+  "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣",
+  "Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
+  "Sino nagtanong sa'yo? Lakas maka-main character ah.",
+  "Bro, isip muna bago pindot ng send button, napapahalata ka eh.",
+  "Pang-asar ba 'yan o self-humiliation? Clarify natin.",
+  "Sana bago ka nag-text, nag-isip ka muna ng limang beses.",
+  "Quiet ka na lang muna lods, nauubusan na kami ng patience sa'yo.",
+  "I-off mo na wifi mo, hindi para sa'yo ang araw na 'to.",
+  "Ganda ng sinabi mo ah, kasing ganda ng blankong papel. 🤡",
+  "Ulitin mo nga 'yan, para mas lalo ka naming pagtawanan.",
+  "May group chat restraint order ka na ba? Kasi lapit na kita i-report.",
+  "Tigilan mo na 'yan, pati 'yung keyboard mo sumusuko na sa'yo.",
+  "Confidence level: 100%. Sense level: 0%.",
+  "Sige lang, ipagpatuloy mo 'yan... hanggang sa wala nang makipag-usap sa'yo."
 ];
 
 function loadData() {
   try {
     if (fs.existsSync(DATA_PATH)) {
-      return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
+      const parsed = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
+      if (!parsed.roasts || parsed.roasts.length === 0) {
+        parsed.roasts = DEFAULT_TAGALOG_ROASTS;
+      }
+      return parsed;
     }
   } catch {}
-  return { active: false, activatedBy: null };
+  return { active: false, activatedBy: null, roasts: DEFAULT_TAGALOG_ROASTS };
 }
 
 function saveData(data) {
@@ -62,134 +59,191 @@ function saveData(data) {
 
 function isActive() {
   const data = loadData();
-  return !!data.active;
+  return data.active === true;
 }
 
-// ===== EVENT HANDLER (Runs on all messages & GC actions) =====
-module.handleEvent = async function ({ api, event }) {
-  const { threadID, senderID, body, messageID, isGroup } = event;
+// ===== SLOW-MOTION & ANTI-SPAM SYSTEM =====
+const lastResponseTime = new Map();
+const COOLDOWN_DELAY = 2000; // 2 Seconds Slow Motion Duration for Auto Reply
 
-  // Ignore bot's own actions or commands
-  if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ===== EVENT HANDLER =====
+module.exports.handleEvent = async function ({ api, event }) {
+  const { threadID, senderID, body, messageID } = event;
+
+  // Anti-Spam: Ignore empty messages, bot's own messages, and the /activate command itself
+  if (!body || senderID === api.getCurrentUserID() || body.toLowerCase().startsWith("/activate")) return;
 
   if (!isActive()) return;
 
-  // 1. AUTO SELF-REACT
-  try {
-    api.setMessageReaction(DEFAULT_EMOJI, messageID, () => {}, true);
-  } catch (err) {}
-
-  // 2. ANTI-SPAM PROTECTION
   const now = Date.now();
-  if (!userMessageLogs[senderID]) userMessageLogs[senderID] = [];
-  userMessageLogs[senderID] = userMessageLogs[senderID].filter(t => now - t < SPAM_INTERVAL);
-  userMessageLogs[senderID].push(now);
+  const lastTime = lastResponseTime.get(threadID) || 0;
 
-  if (userMessageLogs[senderID].length > SPAM_THRESHOLD) {
-    api.sendMessage("⚠️ Spammer detected! Please slow down.", threadID);
+  // SLOW MOTION ANTI-RESTRICTION: 2-Second Cooldown Check
+  if (now - lastTime < COOLDOWN_DELAY) {
     return;
   }
 
-  // 3. AUTO CHANGE GROUP NAME & MEMBER NICKNAMES
-  if (isGroup) {
-    api.getThreadInfo(threadID, (err, info) => {
-      if (err || !info) return;
+  // Lock thread timestamp
+  lastResponseTime.set(threadID, now);
 
-      // Auto Group Name Lock
-      if (info.threadName !== TARGET_NAME) {
-        api.setTitle(TARGET_NAME, threadID, () => {});
+  try {
+    const data = loadData();
+    const roastsList = data.roasts && data.roasts.length > 0 ? data.roasts : DEFAULT_TAGALOG_ROASTS;
+
+    // Pick random Tagalog roast and emoji
+    const randomRoast = roastsList[Math.floor(Math.random() * roastsList.length)];
+    const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
+
+    // Typing Delay (2 Seconds slow-motion buffer)
+    await sleep(2000);
+
+    // AUTO REPLY WITH DIRECT QUOTE/REPLY TO MESSAGE
+    api.sendMessage({
+      body: randomRoast,
+      mentions: [{ tag: `@${senderID}`, id: senderID }]
+    }, threadID, async (err, info) => {
+      if (!err && info && info.messageID) {
+        await sleep(500);
+        api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
+          if (reactErr) console.error("Self-react error:", reactErr);
+        }, true);
       }
-
-      // Auto Sender Nickname Lock
-      if (info.nicknames && info.nicknames[senderID] !== TARGET_NAME) {
-        api.changeNickname(TARGET_NAME, threadID, senderID, () => {});
-      }
-    });
-  }
-
-  // 4. AUTO-ROAST CHAT LINES
-  const count = Math.floor(Math.random() * 4) + 4; // Pick 4 to 7 lines
-  const shuffled = [...ROASTS].sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, count);
-
-  for (let i = 0; i < selected.length; i++) {
-    setTimeout(() => {
-      api.sendMessage(selected[i], threadID);
-    }, i * 800);
+    }, messageID);
+  } catch (error) {
+    console.error("Auto-reply error:", error);
   }
 };
 
 // ===== COMMAND HANDLER =====
-module.run = async function ({ api, event, args }) {
-  const { threadID, messageID, senderID, isGroup } = event;
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, senderID } = event;
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // Admin Verification Check
+  // ADMIN PERMISSION CHECK
   if (senderID !== ADMIN_ID) {
-    return api.sendMessage("❌ Access Denied: Only Admin (ID: 61595507156493) can use this command.", threadID, messageID);
+    return api.sendMessage("❌ Boss lang ang pwedeng gumamit ng command na 'to! 😂", threadID, messageID);
   }
 
+  // Turn ON Infinite Duration (Tagalog Mode)
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
     data.activatedAt = Date.now();
     saveData(data);
 
-    // Enforce nicknames on all members in the GC when toggled ON
-    if (isGroup) {
-      api.getThreadInfo(threadID, (err, info) => {
-        if (!err && info && info.participantIDs) {
-          info.participantIDs.forEach((id) => {
-            if (!info.nicknames || info.nicknames[id] !== TARGET_NAME) {
-              api.changeNickname(TARGET_NAME, threadID, id, () => {});
-            }
-          });
-        }
-      });
-      api.setTitle(TARGET_NAME, threadID, () => {});
-    }
-
     return api.sendMessage(
-      `🔥 GOJO BOT: ACTIVATED (INFINITE DURATION)\n\n` +
-      `• Auto-Roast: ACTIVE\n` +
-      `• Anti-Spam: ENABLED\n` +
-      `• Auto Self-React: ACTIVE (${DEFAULT_EMOJI})\n` +
-      `• Group Name Locked to: "${TARGET_NAME}"\n` +
-      `• Member Nicknames Locked to: "${TARGET_NAME}"\n\n` +
-      `Use /gojo off to stop.`,
+      `🔥 TAGALOG GLOBAL AUTO-ROAST: ON\n\n` +
+      `Admin: Locked to ${ADMIN_ID}\n` +
+      `Duration: INFINITE ♾️\n` +
+      `Mode: Auto Reply (Direct Quote)\n` +
+      `Anti-Spam Delay: SLOW MOTION (2s Cooldown)\n` +
+      `Auto Self-React: ACTIVE\n\n` +
+      `Gamitin ang /activate off para i-stop.`,
       threadID,
       messageID
     );
   }
 
+  // Turn OFF
   if (sub === "off") {
-    if (isActive()) {
-      data.active = false;
-      saveData(data);
-      return api.sendMessage("✅ All Gojo bot active features turned OFF.", threadID, messageID);
-    }
-    return api.sendMessage("Gojo bot is not currently active.", threadID, messageID);
+    data.active = false;
+    saveData(data);
+    return api.sendMessage("✅ Naka-OFF na ang global auto-roast.", threadID, messageID);
   }
 
+  // Check Status
   if (sub === "status") {
-    const statusStr = isActive() ? "ACTIVE (Infinite Duration)" : "OFF";
+    if (!data.active) {
+      return api.sendMessage("Naka-OFF ang global auto-roast sa kasalukuyan.", threadID, messageID);
+    }
+    const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
     return api.sendMessage(
-      `🤖 GOJO BOT STATUS\n` +
-      `Status: ${statusStr}\n` +
+      `🔥 Ang Tagalog Auto-roast ay ACTIVE (INFINITE ♾️)\n` +
       `Admin ID: ${ADMIN_ID}\n` +
-      `Target Name: ${TARGET_NAME}`,
+      `Mode: Pure Text Auto Reply\n` +
+      `Anti-Spam: 2s Slow Motion Cooldown\n` +
+      `Kabuuan ng mga linya: ${totalLines}`,
       threadID,
       messageID
     );
+  }
+
+  // Add Custom Tagalog Lines
+  if (sub === "add") {
+    const customLine = args.slice(1).join(" ");
+    if (!customLine) {
+      return api.sendMessage("❌ Paki-lagay 'yung linyang gusto mong idagdag.\nHalimbawa: /activate add Tahimik ka na lang lods.", threadID, messageID);
+    }
+
+    if (!data.roasts) data.roasts = DEFAULT_TAGALOG_ROASTS;
+    data.roasts.push(customLine);
+    saveData(data);
+
+    return api.sendMessage(`✅ Tagumpay na naidagdag ang bagong linya:\n"${customLine}"`, threadID, messageID);
+  }
+
+  // List All Custom Lines
+  if (sub === "listlines") {
+    const list = data.roasts || DEFAULT_TAGALOG_ROASTS;
+    let msg = `📜 Lahat ng Tagalog Reply Lines (${list.length}):\n\n`;
+    list.forEach((line, index) => {
+      msg += `${index + 1}. ${line}\n`;
+    });
+    return api.sendMessage(msg, threadID, messageID);
+  }
+
+  // FAST & SAFE SETNICK (Optimized 1.5s - 2.5s Delay)
+  if (sub === "setnick") {
+    try {
+      const threadInfo = await api.getThreadInfo(threadID);
+      const participantIDs = threadInfo.participantIDs;
+
+      api.sendMessage(
+        `⚡ FAST & SAFE NICKNAME CHANGE\n` +
+        `Miyembro: ${participantIDs.length}\n` +
+        `Speed: 1.5 to 2.5 seconds per member (Optimized & Anti-Ban)\n` +
+        `Simulan na ang pagpapalit...`, 
+        threadID
+      );
+
+      for (const userID of participantIDs) {
+        // Optimized Fast/Safe Delay: Random delay between 1500ms (1.5s) and 2500ms (2.5s)
+        const fastSafeDelay = Math.floor(Math.random() * 1000) + 1500;
+        await sleep(fastSafeDelay);
+
+        api.changeNickname("Jehosh Pogi", threadID, userID, (err) => {
+          if (err) console.error(`Failed nickname change for ${userID}:`, err);
+        });
+      }
+      return api.sendMessage("✅ Tagumpay na nabago ang lahat ng nicknames sa 'Jehosh Pogi' nang mabilis at ligtas!", threadID, messageID);
+    } catch (e) {
+      return api.sendMessage("❌ Bigo sa pagbago ng nicknames. Siguraduhing admin ang bot.", threadID, messageID);
+    }
+  }
+
+  // Set Group Name
+  if (sub === "setgname") {
+    api.setTitle("Jehosh Pogi", threadID, (err) => {
+      if (err) {
+        return api.sendMessage("❌ Bigo sa pagbago ng pangalan ng group chat.", threadID, messageID);
+      }
+      return api.sendMessage("✅ Ang pangalan ng GC ay pinalitan na sa 'Jehosh Pogi'.", threadID, messageID);
+    });
+    return;
   }
 
   return api.sendMessage(
-    `Usage:\n` +
-    `/gojo on — Start infinite global features\n` +
-    `/gojo off — Stop all features\n` +
-    `/gojo status — Check active status\n\n` +
-    `Admin Only (ID: 61595507156493)`,
+    `Mga Paggamit (Usage):\n` +
+    `/activate on — Simulan ang infinite Tagalog auto-roast (2s Slow Motion)\n` +
+    `/activate off — Itigil ang auto-roast\n` +
+    `/activate status — Tignan ang status\n` +
+    `/activate add <text> — Magdagdag ng bagong Tagalog line\n` +
+    `/activate listlines — Ilista ang lahat ng linyang pang-asar\n` +
+    `/activate setnick — Fast & safe change ng nicknames sa 'Jehosh Pogi'\n` +
+    `/activate setgname — Gawing 'Jehosh Pogi' ang pangalan ng GC`,
     threadID,
     messageID
   );
