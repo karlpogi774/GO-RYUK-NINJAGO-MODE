@@ -3,14 +3,14 @@ const path = require("path");
 
 module.exports.config = {
   name: "activate",
-  version: "11.0.0",
+  version: "12.0.0",
   hasPermission: 0,
   credits: "sinzu",
-  description: "Auto-roast bot with anti-detection 6s delay",
+  description: "7s delay • Advanced Anti-Detection",
   usePrefix: true,
   commandCategory: "Admin",
   usages: "/activate on | off | status",
-  cooldowns: 6
+  cooldowns: 7
 };
 
 // ADMIN ID RESTRICTION
@@ -18,8 +18,8 @@ const ADMIN_ID = "61595507156493";
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-// Emojis for auto self-react
-const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "🗿", "💩"];
+// Emojis for auto self-react — mas kaunti para hindi halata
+const REACT_EMOJIS = ["🤣", "💀", "🔥"];
 
 // Tagalog roasts
 const AUTO_REPLIES = [
@@ -47,7 +47,7 @@ function loadData() {
       return parsed;
     }
   } catch {}
-  return { active: false };
+  return { active: false, lastReplied: {} };
 }
 
 function saveData(data) {
@@ -58,58 +58,80 @@ function isActive() {
   return loadData().active === true;
 }
 
-// ===== ANTI-DETECTION SYSTEM =====
-const lastResponseTime = new Map();
-const MIN_DELAY = 5000;   // 5 seconds minimum
-const MAX_DELAY = 8000;   // 8 seconds maximum — HINDI pare-pareho ang timing!
-
+// ==========================================
+// 🛡️ ADVANCED ANTI-DETECTION SYSTEM
+// ==========================================
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Get random delay para hindi ma-detect
-function randomDelay() {
-  return Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;
+// ⏱️ 7 seconds base ± random variation para hindi robot ang dating
+const BASE_DELAY = 7000;
+const VARIANCE = 2000; // ±2 seconds
+
+function getHumanDelay() {
+  return BASE_DELAY + Math.floor(Math.random() * VARIANCE * 2) - VARIANCE;
 }
+
+// Para hindi mag-reply sa sunod-sunod na mensahe ng iisang tao
+const recentReplies = new Map();
+const REPLY_COOLDOWN = 25000; // 25 seconds bago pwede mag-reply ulit sa parehong tao
 
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
 
-  // Ignore empty messages, bot's own messages, and commands
-  if (!body || senderID === api.getCurrentUserID() || body.toLowerCase().startsWith("/activate")) return;
+  // ❌ Ignore: walang text, sariling message, command, maikling text
+  if (!body || senderID === api.getCurrentUserID() || 
+      body.toLowerCase().startsWith("/activate") ||
+      body.trim().length < 2) return;
 
   if (!isActive()) return;
 
-  const now = Date.now();
-  const lastTime = lastResponseTime.get(threadID) || 0;
+  // ✅ Huwag mag-reply agad kung kakareply lang sa taong 'to
+  const lastReplyTime = recentReplies.get(`${threadID}-${senderID}`) || 0;
+  if (Date.now() - lastReplyTime < REPLY_COOLDOWN) return;
 
-  // Random cooldown check per GC
-  const cooldown = randomDelay();
-  if (now - lastTime < cooldown) return;
-
-  lastResponseTime.set(threadID, now);
+  // ✅ Huwag mag-reply kung maraming nag-chat sabay-sabay
+  const threadActivity = recentReplies.get(`activity-${threadID}`) || 0;
+  if (Date.now() - threadActivity < 1500) {
+    recentReplies.set(`activity-${threadID}`, Date.now());
+    return;
+  }
+  recentReplies.set(`activity-${threadID}`, Date.now());
 
   try {
+    // ⏱️ Human-like delay: ~7 seconds ± random
+    const humanDelay = getHumanDelay();
+    await sleep(humanDelay);
+
+    // ✅ Pumili ng reply — minsan huwag na mag-reply para hindi masyadong active
+    if (Math.random() < 0.25) { // 25% chance na hindi mag-reply kahit may message
+      return;
+    }
+
     // Random reply
     const randomReply = AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)];
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
-    
-    // Random typing delay — hindi laging 6 seconds
-    const typingDelay = randomDelay();
-    await sleep(typingDelay);
 
-    // Send reply
-    api.sendMessage({
-      body: randomReply,
-      mentions: [{ tag: `@${senderID}`, id: senderID }]
-    }, threadID, async (err, info) => {
+    // I-record na nakareply na sa taong ito
+    recentReplies.set(`${threadID}-${senderID}`, Date.now());
+
+    // Send reply — WALANG @mention palagi para hindi halata
+    const shouldMention = Math.random() > 0.3; // 70% chance lang mag-mention
+    const messageBody = shouldMention 
+      ? { body: randomReply, mentions: [{ tag: `@${senderID}`, id: senderID }] }
+      : { body: randomReply };
+
+    api.sendMessage(messageBody, threadID, async (err, info) => {
       if (!err && info?.messageID) {
-        // Small random delay before reaction
-        await sleep(Math.floor(Math.random() * 800) + 400);
-        api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
+        // ✅ Reaction — minsan lang mag-react
+        if (Math.random() > 0.4) { // 60% chance lang mag-react
+          await sleep(Math.floor(Math.random() * 1200) + 600);
+          api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
+        }
       }
     }, messageID);
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error("Bot Error:", error.message);
   }
 };
 
@@ -129,9 +151,9 @@ module.exports.run = async function ({ api, event, args }) {
     saveData(data);
     return api.sendMessage(
       `✅ ACTIVATED\n\n` +
-      `🛡️ Anti-Detection: ON (Random 5-8s delay)\n` +
-      `⏱️ Reply: Random timing — hindi pare-pareho\n` +
-      `✋ Gamitin: /activate off para itigil`,
+      `⏱️ Reply Delay: ~7s (Human-like ± random)\n` +
+      `🛡️ Anti-Detection: MAXIMUM\n` +
+      `✋ /activate off para itigil`,
       threadID,
       messageID
     );
@@ -146,20 +168,20 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "status") {
     return api.sendMessage(
       isActive() 
-        ? "✅ STATUS: ACTIVE — Bot ay nakabuhay at nagbabantay"
-        : "⏸️ STATUS: OFF — Bot ay kasalukuyang nakahinto",
+        ? "✅ ACTIVE — Nagbabantay nang ligtas"
+        : "⏸️ OFF — Naka-hinto ang bot",
       threadID,
       messageID
     );
   }
 
-  // Help message
   return api.sendMessage(
-    `📌 Mga Command:\n\n` +
-    `/activate on — Simulan ang bot\n` +
-    `/activate off — Itigil ang bot\n` +
-    `/activate status — Tignan ang kalagayan`,
+    `📌 Commands:\n\n` +
+    `/activate on — I-ON ang bot\n` +
+    `/activate off — I-OFF ang bot\n` +
+    `/activate status — Tignan ang status`,
     threadID,
     messageID
   );
 };
+  
