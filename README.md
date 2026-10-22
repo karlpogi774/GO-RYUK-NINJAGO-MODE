@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Press+Start+2P&weight=900&size=45&pause=1000&color=CE1126&center=true&vCenter=true&width=600&lines=GØ.RYŪK.NĪNJĀGØ.MØDĒ&color=0038A8" alt="GØ.RYŪK.NĪNJĀGØ.MØDĒ" />
+  <img src="https://readme-typing-svg.demolab.com?font=Press+Start+2P&weight=900&size=45&pause=1000&color=CE1126&center=true&vCenter=true&width=600&lines=GO.RYUK.NINJAGO.MODE&color=0038A8" alt="GO.RYUK.NINJAGO.MODE" />
 </p>
 
 <p align="center">
