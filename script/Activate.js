@@ -3,14 +3,14 @@ const path = require("path");
 
 module.exports.config = {
   name: "activate",
-  version: "10.0.0",
+  version: "10.1.0",
   hasPermission: 0,
   credits: "sinzu",
-  description: "Admin-locked infinite global Tagalog auto-roast with fast & safe nickname changer, 2s reply delay, and anti-spam.",
+  description: "Admin-locked infinite global Tagalog auto-roast with 6s reply delay, fast & safe nickname changer, and anti-spam.",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/activate on | off | status | add <text> | listlines | setnick | setgname",
-  cooldowns: 5
+  cooldowns: 6
 };
 
 // ADMIN ID RESTRICTION
@@ -64,7 +64,7 @@ function isActive() {
 
 // ===== SLOW-MOTION & ANTI-SPAM SYSTEM =====
 const lastResponseTime = new Map();
-const COOLDOWN_DELAY = 8000; // 2 Seconds Slow Motion Duration for Auto Reply
+const COOLDOWN_DELAY = 6000; // ⏱️ 6 Seconds Cooldown
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -80,7 +80,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   const now = Date.now();
   const lastTime = lastResponseTime.get(threadID) || 0;
 
-  // SLOW MOTION ANTI-RESTRICTION: 2-Second Cooldown Check
+  // ⏱️ 6-Second Cooldown Check
   if (now - lastTime < COOLDOWN_DELAY) {
     return;
   }
@@ -96,8 +96,8 @@ module.exports.handleEvent = async function ({ api, event }) {
     const randomRoast = roastsList[Math.floor(Math.random() * roastsList.length)];
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    // Typing Delay (2 Seconds slow-motion buffer)
-    await sleep(2000);
+    // ⏱️ Typing Delay — 6 seconds before reply
+    await sleep(6000);
 
     // AUTO REPLY WITH DIRECT QUOTE/REPLY TO MESSAGE
     api.sendMessage({
@@ -139,7 +139,7 @@ module.exports.run = async function ({ api, event, args }) {
       `Admin: Locked to ${ADMIN_ID}\n` +
       `Duration: INFINITE ♾️\n` +
       `Mode: Auto Reply (Direct Quote)\n` +
-      `Anti-Spam Delay: SLOW MOTION (2s Cooldown)\n` +
+      `⏱️ Reply Delay: 6 SECONDS\n` +
       `Auto Self-React: ACTIVE\n\n` +
       `Gamitin ang /activate off para i-stop.`,
       threadID,
@@ -164,7 +164,7 @@ module.exports.run = async function ({ api, event, args }) {
       `🔥 Ang Tagalog Auto-roast ay ACTIVE (INFINITE ♾️)\n` +
       `Admin ID: ${ADMIN_ID}\n` +
       `Mode: Pure Text Auto Reply\n` +
-      `Anti-Spam: 2s Slow Motion Cooldown\n` +
+      `⏱️ Reply Delay: 6 SECONDS\n` +
       `Kabuuan ng mga linya: ${totalLines}`,
       threadID,
       messageID
@@ -237,7 +237,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   return api.sendMessage(
     `Mga Paggamit (Usage):\n` +
-    `/activate on — Simulan ang infinite Tagalog auto-roast (2s Slow Motion)\n` +
+    `/activate on — Simulan ang infinite Tagalog auto-roast (6s Delay)\n` +
     `/activate off — Itigil ang auto-roast\n` +
     `/activate status — Tignan ang status\n` +
     `/activate add <text> — Magdagdag ng bagong Tagalog line\n` +
@@ -248,3 +248,4 @@ module.exports.run = async function ({ api, event, args }) {
     messageID
   );
 };
+                            
