@@ -3,13 +3,13 @@ const path = require("path");
 
 module.exports.config = {
   name: "activate",
-  version: "10.1.0",
+  version: "11.0.0",
   hasPermission: 0,
   credits: "sinzu",
-  description: "Admin-locked infinite global Tagalog auto-roast with 6s reply delay, fast & safe nickname changer, and anti-spam.",
+  description: "Auto-roast bot with anti-detection 6s delay",
   usePrefix: true,
-  commandCategory: "Fun",
-  usages: "/activate on | off | status | add <text> | listlines | setnick | setgname",
+  commandCategory: "Admin",
+  usages: "/activate on | off | status",
   cooldowns: 6
 };
 
@@ -19,10 +19,10 @@ const ADMIN_ID = "61595507156493";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
 // Emojis for auto self-react
-const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎"];
+const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "🗿", "💩"];
 
-// Default Tagalog roasts
-const DEFAULT_TAGALOG_ROASTS = [
+// Tagalog roasts
+const AUTO_REPLIES = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
   "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣",
   "Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
@@ -44,13 +44,10 @@ function loadData() {
   try {
     if (fs.existsSync(DATA_PATH)) {
       const parsed = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
-      if (!parsed.roasts || parsed.roasts.length === 0) {
-        parsed.roasts = DEFAULT_TAGALOG_ROASTS;
-      }
       return parsed;
     }
   } catch {}
-  return { active: false, activatedBy: null, roasts: DEFAULT_TAGALOG_ROASTS };
+  return { active: false };
 }
 
 function saveData(data) {
@@ -58,21 +55,26 @@ function saveData(data) {
 }
 
 function isActive() {
-  const data = loadData();
-  return data.active === true;
+  return loadData().active === true;
 }
 
-// ===== SLOW-MOTION & ANTI-SPAM SYSTEM =====
+// ===== ANTI-DETECTION SYSTEM =====
 const lastResponseTime = new Map();
-const COOLDOWN_DELAY = 6000; // ⏱️ 6 Seconds Cooldown
+const MIN_DELAY = 5000;   // 5 seconds minimum
+const MAX_DELAY = 8000;   // 8 seconds maximum — HINDI pare-pareho ang timing!
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Get random delay para hindi ma-detect
+function randomDelay() {
+  return Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;
+}
 
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
 
-  // Anti-Spam: Ignore empty messages, bot's own messages, and the /activate command itself
+  // Ignore empty messages, bot's own messages, and commands
   if (!body || senderID === api.getCurrentUserID() || body.toLowerCase().startsWith("/activate")) return;
 
   if (!isActive()) return;
@@ -80,39 +82,34 @@ module.exports.handleEvent = async function ({ api, event }) {
   const now = Date.now();
   const lastTime = lastResponseTime.get(threadID) || 0;
 
-  // ⏱️ 6-Second Cooldown Check
-  if (now - lastTime < COOLDOWN_DELAY) {
-    return;
-  }
+  // Random cooldown check per GC
+  const cooldown = randomDelay();
+  if (now - lastTime < cooldown) return;
 
-  // Lock thread timestamp
   lastResponseTime.set(threadID, now);
 
   try {
-    const data = loadData();
-    const roastsList = data.roasts && data.roasts.length > 0 ? data.roasts : DEFAULT_TAGALOG_ROASTS;
-
-    // Pick random Tagalog roast and emoji
-    const randomRoast = roastsList[Math.floor(Math.random() * roastsList.length)];
+    // Random reply
+    const randomReply = AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)];
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
+    
+    // Random typing delay — hindi laging 6 seconds
+    const typingDelay = randomDelay();
+    await sleep(typingDelay);
 
-    // ⏱️ Typing Delay — 6 seconds before reply
-    await sleep(6000);
-
-    // AUTO REPLY WITH DIRECT QUOTE/REPLY TO MESSAGE
+    // Send reply
     api.sendMessage({
-      body: randomRoast,
+      body: randomReply,
       mentions: [{ tag: `@${senderID}`, id: senderID }]
     }, threadID, async (err, info) => {
-      if (!err && info && info.messageID) {
-        await sleep(500);
-        api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
-          if (reactErr) console.error("Self-react error:", reactErr);
-        }, true);
+      if (!err && info?.messageID) {
+        // Small random delay before reaction
+        await sleep(Math.floor(Math.random() * 800) + 400);
+        api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
       }
     }, messageID);
   } catch (error) {
-    console.error("Auto-reply error:", error);
+    console.error("Error:", error.message);
   }
 };
 
@@ -122,130 +119,47 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // ADMIN PERMISSION CHECK
+  // Admin only
   if (senderID !== ADMIN_ID) {
-    return api.sendMessage("❌ Boss lang ang pwedeng gumamit ng command na 'to! 😂", threadID, messageID);
+    return api.sendMessage("❌ Hindi mo pwede gamitin 'to! 😂", threadID, messageID);
   }
 
-  // Turn ON Infinite Duration (Tagalog Mode)
   if (sub === "on") {
     data.active = true;
-    data.activatedBy = senderID;
-    data.activatedAt = Date.now();
     saveData(data);
-
     return api.sendMessage(
-      `🔥 TAGALOG GLOBAL AUTO-ROAST: ON\n\n` +
-      `Admin: Locked to ${ADMIN_ID}\n` +
-      `Duration: INFINITE ♾️\n` +
-      `Mode: Auto Reply (Direct Quote)\n` +
-      `⏱️ Reply Delay: 6 SECONDS\n` +
-      `Auto Self-React: ACTIVE\n\n` +
-      `Gamitin ang /activate off para i-stop.`,
+      `✅ ACTIVATED\n\n` +
+      `🛡️ Anti-Detection: ON (Random 5-8s delay)\n` +
+      `⏱️ Reply: Random timing — hindi pare-pareho\n` +
+      `✋ Gamitin: /activate off para itigil`,
       threadID,
       messageID
     );
   }
 
-  // Turn OFF
   if (sub === "off") {
     data.active = false;
     saveData(data);
-    return api.sendMessage("✅ Naka-OFF na ang global auto-roast.", threadID, messageID);
+    return api.sendMessage("✅ DEACTIVATED", threadID, messageID);
   }
 
-  // Check Status
   if (sub === "status") {
-    if (!data.active) {
-      return api.sendMessage("Naka-OFF ang global auto-roast sa kasalukuyan.", threadID, messageID);
-    }
-    const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
     return api.sendMessage(
-      `🔥 Ang Tagalog Auto-roast ay ACTIVE (INFINITE ♾️)\n` +
-      `Admin ID: ${ADMIN_ID}\n` +
-      `Mode: Pure Text Auto Reply\n` +
-      `⏱️ Reply Delay: 6 SECONDS\n` +
-      `Kabuuan ng mga linya: ${totalLines}`,
+      isActive() 
+        ? "✅ STATUS: ACTIVE — Bot ay nakabuhay at nagbabantay"
+        : "⏸️ STATUS: OFF — Bot ay kasalukuyang nakahinto",
       threadID,
       messageID
     );
   }
 
-  // Add Custom Tagalog Lines
-  if (sub === "add") {
-    const customLine = args.slice(1).join(" ");
-    if (!customLine) {
-      return api.sendMessage("❌ Paki-lagay 'yung linyang gusto mong idagdag.\nHalimbawa: /activate add Tahimik ka na lang lods.", threadID, messageID);
-    }
-
-    if (!data.roasts) data.roasts = DEFAULT_TAGALOG_ROASTS;
-    data.roasts.push(customLine);
-    saveData(data);
-
-    return api.sendMessage(`✅ Tagumpay na naidagdag ang bagong linya:\n"${customLine}"`, threadID, messageID);
-  }
-
-  // List All Custom Lines
-  if (sub === "listlines") {
-    const list = data.roasts || DEFAULT_TAGALOG_ROASTS;
-    let msg = `📜 Lahat ng Tagalog Reply Lines (${list.length}):\n\n`;
-    list.forEach((line, index) => {
-      msg += `${index + 1}. ${line}\n`;
-    });
-    return api.sendMessage(msg, threadID, messageID);
-  }
-
-  // FAST & SAFE SETNICK (Optimized 1.5s - 2.5s Delay)
-  if (sub === "setnick") {
-    try {
-      const threadInfo = await api.getThreadInfo(threadID);
-      const participantIDs = threadInfo.participantIDs;
-
-      api.sendMessage(
-        `⚡ FAST & SAFE NICKNAME CHANGE\n` +
-        `Miyembro: ${participantIDs.length}\n` +
-        `Speed: 1.5 to 2.5 seconds per member (Optimized & Anti-Ban)\n` +
-        `Simulan na ang pagpapalit...`, 
-        threadID
-      );
-
-      for (const userID of participantIDs) {
-        // Optimized Fast/Safe Delay: Random delay between 1500ms (1.5s) and 2500ms (2.5s)
-        const fastSafeDelay = Math.floor(Math.random() * 1000) + 1500;
-        await sleep(fastSafeDelay);
-
-        api.changeNickname("Jehosh Pogi", threadID, userID, (err) => {
-          if (err) console.error(`Failed nickname change for ${userID}:`, err);
-        });
-      }
-      return api.sendMessage("✅ Tagumpay na nabago ang lahat ng nicknames sa 'Jehosh Pogi' nang mabilis at ligtas!", threadID, messageID);
-    } catch (e) {
-      return api.sendMessage("❌ Bigo sa pagbago ng nicknames. Siguraduhing admin ang bot.", threadID, messageID);
-    }
-  }
-
-  // Set Group Name
-  if (sub === "setgname") {
-    api.setTitle("Jehosh Pogi", threadID, (err) => {
-      if (err) {
-        return api.sendMessage("❌ Bigo sa pagbago ng pangalan ng group chat.", threadID, messageID);
-      }
-      return api.sendMessage("✅ Ang pangalan ng GC ay pinalitan na sa 'Jehosh Pogi'.", threadID, messageID);
-    });
-    return;
-  }
-
+  // Help message
   return api.sendMessage(
-    `Mga Paggamit (Usage):\n` +
-    `/activate on — Simulan ang infinite Tagalog auto-roast (6s Delay)\n` +
-    `/activate off — Itigil ang auto-roast\n` +
-    `/activate status — Tignan ang status\n` +
-    `/activate add <text> — Magdagdag ng bagong Tagalog line\n` +
-    `/activate listlines — Ilista ang lahat ng linyang pang-asar\n` +
-    `/activate setnick — Fast & safe change ng nicknames sa 'Jehosh Pogi'\n` +
-    `/activate setgname — Gawing 'Jehosh Pogi' ang pangalan ng GC`,
+    `📌 Mga Command:\n\n` +
+    `/activate on — Simulan ang bot\n` +
+    `/activate off — Itigil ang bot\n` +
+    `/activate status — Tignan ang kalagayan`,
     threadID,
     messageID
   );
 };
-                            
