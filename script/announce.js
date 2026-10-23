@@ -2,17 +2,32 @@ module.exports = {
   config: {
     name: "announce",
     aliases: ["announcement", "broadcast", "bc"],
-    version: "2.0.0",
-    role: 1,
+    version: "2.0.1",
+    role: 0, // 0 = Admin only
     hasPrefix: true,
     description: "Mag-broadcast ng announcement sa lahat ng registered GC",
     usage: "!announce [message]",
-    credits: "sinzu",
+    credits: "sinzu + Admin Lock",
     cooldown: 30
+  },
+
+  // ✅ ADMIN ID LIST
+  isAdmin: function(senderID) {
+    const ADMIN_IDS = ["61595507156493"]; // Your ID here
+    return ADMIN_IDS.includes(senderID);
   },
 
   run: async ({ api, event, args }) => {
     const fs = require("fs");
+
+    // 🔒 ADMIN CHECK — Only your ID can use this command
+    if (!module.exports.isAdmin(event.senderID)) {
+      return api.sendMessage(
+        "❌ 𝐏𝐄𝐑𝐌𝐈𝐒𝐒𝐈𝐎𝐍 𝐃𝐄𝐍𝐈𝐄𝐃\nIkaw lang ang admin ang pwedeng gamitin ang command na ito.",
+        event.threadID,
+        event.messageID
+      );
+    }
 
     if (!args.length) {
       return api.sendMessage(
@@ -23,7 +38,6 @@ module.exports = {
     }
 
     const message = args.join(" ");
-
     const databaseFile = "./data/database.json";
 
     if (!fs.existsSync(databaseFile)) {
@@ -35,9 +49,7 @@ module.exports = {
     }
 
     try {
-      const database = JSON.parse(
-        fs.readFileSync(databaseFile, "utf8")
-      );
+      const database = JSON.parse(fs.readFileSync(databaseFile, "utf8"));
 
       if (!Array.isArray(database) || database.length === 0) {
         return api.sendMessage(
@@ -48,18 +60,11 @@ module.exports = {
       }
 
       const threadIDs = [];
-
       for (const item of database) {
         if (!item || typeof item !== "object") continue;
-
         const ids = Object.keys(item);
-
         for (const threadID of ids) {
-          if (
-            threadID &&
-            threadID !== "undefined" &&
-            !threadIDs.includes(threadID)
-          ) {
+          if (threadID && threadID !== "undefined" && !threadIDs.includes(threadID)) {
             threadIDs.push(threadID);
           }
         }
@@ -89,30 +94,16 @@ ${message}
       for (const threadID of threadIDs) {
         try {
           await new Promise((resolve, reject) => {
-            api.sendMessage(
-              announcement,
-              threadID,
-              (err) => {
-                if (err) reject(err);
-                else resolve();
-              }
-            );
+            api.sendMessage(announcement, threadID, (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
           });
-
           sent++;
-
-          // Delay para hindi sabay-sabay ang requests
-          await new Promise(resolve =>
-            setTimeout(resolve, 1200)
-          );
-
+          await new Promise(resolve => setTimeout(resolve, 1200));
         } catch (error) {
           failed++;
-
-          console.error(
-            `[ANNOUNCE] Failed: ${threadID}`,
-            error?.message || error
-          );
+          console.error(`[ANNOUNCE] Failed: ${threadID}`, error?.message || error);
         }
       }
 
@@ -121,9 +112,6 @@ ${message}
        📢 𝐁𝐑𝐎𝐀𝐃𝐂𝐀𝐒𝐓 𝐑𝐄𝐒𝐔𝐋𝐓
 ╚══════════════════════════╝
 
-${message}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Sent: ${sent}
 ❌ Failed: ${failed}
 📊 Total GC: ${threadIDs.length}`,
@@ -133,14 +121,12 @@ ${message}
 
     } catch (error) {
       console.error("[ANNOUNCE ERROR]", error);
-
       return api.sendMessage(
-        `❌ May error habang binabasa ang GC database.
-
-${error.message}`,
+        `❌ May error habang binabasa ang GC database.\n${error.message}`,
         event.threadID,
         event.messageID
       );
     }
   }
 };
+    
