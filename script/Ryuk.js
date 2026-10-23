@@ -3,7 +3,7 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "3.2.0",
+  version: "3.3.0",
   hasPermission: 2,
   credits: "sinzu & Gemini",
   description: "Infinite global auto-roast with Multi-Admin Locks, Render fix, 2s setnick delay, Auto React, and Name Guard.",
@@ -18,7 +18,7 @@ module.exports.config = {
 const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
-  "61595507156493"
+  "61595507156493",
   "61595398037273"
 ];
 
@@ -284,3 +284,4 @@ module.exports.run = async function ({ api, event, args }) {
     messageID
   );
 };
+  
