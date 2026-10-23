@@ -4,23 +4,31 @@ module.exports = {
   config: {
     name: "hug",
     aliases: ["yakap"],
-    version: "1.0.0",
+    version: "1.0.1",
     role: 0,
     hasPrefix: true,
-    description: "Send a hug GIF to a username",
-    usage: "/hug username",
-    credits: "sinzu",
+    description: "Send a hug GIF to someone",
+    usage: "/hug @mention / name",
+    credits: "Ryuk",
     cooldown: 3
   },
 
   run: async ({ api, event, args }) => {
-    const username = args.join(" ").trim();
+    const { threadID, messageID, mentions, senderID } = event;
+    
+    let targetName = args.join(" ").trim();
+    
+    // ✅ Kung may nag-tag, kunin ang pangalan nila
+    if (mentions && Object.keys(mentions).length > 0) {
+      const targetID = Object.keys(mentions)[0];
+      targetName = mentions[targetID];
+    }
 
-    if (!username) {
+    if (!targetName) {
       return api.sendMessage(
-        "🤗 Lagyan mo ng username!\n\nExample: /hug Juan",
-        event.threadID,
-        event.messageID
+        "🤗 I-tag o ilagay ang pangalan ng taong gusto mong yakapin!\n\nExample: /hug @Ryuk",
+        threadID,
+        messageID
       );
     }
 
@@ -39,18 +47,19 @@ module.exports = {
 
       return api.sendMessage(
         {
-          body: `🤗 ${username}, niyakap ka ni ${event.senderID}! ❤️`,
+          body: `🤗 ${targetName}, niyakap ka! ❤️`,
           attachment: response.data
         },
-        event.threadID,
-        event.messageID
+        threadID,
+        messageID
       );
     } catch (err) {
       return api.sendMessage(
-        `🤗 ${username}, niyakap ka! ❤️`,
-        event.threadID,
-        event.messageID
+        `🤗 ${targetName}, niyakap ka! ❤️\n${gif}`,
+        threadID,
+        messageID
       );
     }
   }
 };
+    
