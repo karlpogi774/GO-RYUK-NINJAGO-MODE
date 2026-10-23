@@ -4,7 +4,7 @@ const path = require("path");
 module.exports.config = {
   name: "ryuk",
   version: "3.2.0",
-  hasPermission: 1,
+  hasPermission: 2,
   credits: "sinzu & Gemini",
   description: "Infinite global auto-roast with Multi-Admin Locks, Render fix, 2s setnick delay, Auto React, and Name Guard.",
   usePrefix: true,
