@@ -3,14 +3,14 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "13.0.0",
+  version: "14.0.0",
   hasPermission: 0,
   credits: "RYUK",
-  description: "RYUK Bot • 7s Delay • Anti-Detection",
+  description: "RYUK Bot • Safe Delay • Low Profile",
   usePrefix: false,
   commandCategory: "Admin",
   usages: "ryuk on | ryuk off | ryuk status",
-  cooldowns: 7
+  cooldowns: 10
 };
 
 // ADMIN ID RESTRICTION
@@ -18,68 +18,36 @@ const ADMIN_ID = "61595507156493";
 
 const DATA_PATH = path.join(__dirname, "ryuk_data.json");
 
-// Auto-reaction emojis
-const REACT_EMOJIS = ["😏", "🗿", "💀", "🥷", "😹", "👁️"];
+// Auto-reaction emojis — mas kaunti para hindi halata
+const REACT_EMOJIS = ["😏", "🗿", "💀"];
 
-// ✅ MAIKLI • MARAMI • RANDOM
+// Maiikling linya
 const AUTO_REPLIES = [
-  "Oo naman, sigurado.",
-  "Sige nga, anong meron?",
-  "Hm, talaga ba?",
-  "Kung ganun nga.",
-  "Sige lang, bahala ka.",
-  "Ganyan ba ang gusto mo?",
-  "Sige, susundin ko.",
-  "Gets ko na.",
-  "Kung ganun, ganun na lang.",
-  "Nasa sa'yo 'yan.",
-  "Sige, wala akong problema.",
-  "Kung kaya mo, go lang.",
-  "Bahala ka, hindi ako makikialam.",
-  "Gusto mo ba talaga 'yan?",
-  "Sige, obserbahan ko lang.",
-  "Kung masaya ka, sige.",
+  "Sige lang.",
+  "Gets ko.",
+  "Bahala ka.",
+  "Kung ganun.",
+  "Sige na lang.",
   "Wala akong masabi.",
   "Ikaw ang mas nakakaalam.",
-  "Sige, nandito lang ako.",
-  "Kung iyan ang desisyon mo.",
-  "Tao ka lang, nagkakamali rin.",
-  "Hindi lahat kailangan sagot.",
-  "Pahinga ka muna.",
-  "Minsan tahimik ay mas mabuti.",
-  "Oras ang magsasabi.",
-  "Hindi kailangan madali.",
+  "Nandito lang ako.",
+  "Kalmado lang.",
   "Dahan-dahan lang.",
-  "Kayang-kaya mo 'yan.",
-  "Huwag kang magmadali.",
-  "Andito lang ako kung kailangan mo.",
-  "Hindi ka nag-iisa.",
-  "Breathe in, breathe out.",
-  "Kalmado lang tayo.",
-  "May tamang panahon para sa lahat.",
-  "Tiwala lang sa proseso.",
-  "Hindi kailangang madaliin ang lahat.",
-  "Gabi na, pahinga na.",
-  "Bukas may bagong simula.",
-  "Okay lang na hindi okay.",
-  "Hindi ka makasalanan.",
-  "Patawarin mo ang sarili mo.",
-  "Sapat ka na.",
-  "Wag mong piliting magmadali.",
-  "Darating din ang tamang pagkakataon.",
-  "Magtiwala ka lang.",
-  "Hindi lahat kontrolado mo.",
-  "Tanggapin mo na lang minsan.",
-  "Mas mahalaga ang kapayapaan mo.",
-  "Worth it ang paghihintay.",
-  "Ikaw lang ang kailangan mong patunayan sa sarili mo."
+  "Tiwala lang.",
+  "Hindi kailangan madali.",
+  "Pahinga ka muna.",
+  "Okay lang 'yan.",
+  "Ganyan talaga minsan.",
+  "Huwag magmadali.",
+  "Darating din tayo doon.",
+  "Hinga lang ng malalim.",
+  "Subok lang 'yan.",
+  "Kaya mo 'yan."
 ];
 
 function loadData() {
   try {
-    if (fs.existsSync(DATA_PATH)) {
-      return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
-    }
+    if (fs.existsSync(DATA_PATH)) return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
   } catch {}
   return { active: false };
 }
@@ -93,66 +61,68 @@ function isActive() {
 }
 
 // ==========================================
-// 🛡️ ANTI-DETECTION SYSTEM
+// 🛡️ LOW PROFILE — MAS LIGTAS NA SETTINGS
 // ==========================================
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ⏱️ ~7 seconds ± random
-const BASE_DELAY = 7000;
-const VARIANCE = 2000;
-function getHumanDelay() {
-  return BASE_DELAY + Math.floor(Math.random() * VARIANCE * 2) - VARIANCE;
+// ⏱️ RECOMMENDED: 9 hanggang 12 seconds
+const MIN_DELAY = 9000;   // 9s minimum
+const MAX_DELAY = 12000;  // 12s maximum
+
+function getRandomDelay() {
+  return Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;
 }
 
 const recentReplies = new Map();
-const REPLY_COOLDOWN = 25000;
+const PERSON_COOLDOWN = 45000; // 45 segundo bago ulit sa parehong tao
+const MAX_REPLIES_PER_GC = 8; // Hanggang 8 reply lang bawat GC kada cycle
+let gcReplyCount = new Map();
 
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
 
-  // Ignore: walang text, sariling message, command
   if (!body || senderID === api.getCurrentUserID()) return;
   
   const lowerBody = body.toLowerCase().trim();
-  if (lowerBody === "ryuk on" || lowerBody === "ryuk off" || lowerBody === "ryuk status") return;
+  if (["ryuk on", "ryuk off", "ryuk status"].includes(lowerBody)) return;
 
   if (!isActive()) return;
 
-  // Cooldown per person
-  const lastReplyTime = recentReplies.get(`${threadID}-${senderID}`) || 0;
-  if (Date.now() - lastReplyTime < REPLY_COOLDOWN) return;
+  // Limit: Hindi lalampas sa 8 reply bawat GC
+  gcReplyCount.set(threadID, (gcReplyCount.get(threadID) || 0) + 1);
+  if (gcReplyCount.get(threadID) > MAX_REPLIES_PER_GC) return;
 
-  // Anti-spam burst
-  const threadActivity = recentReplies.get(`activity-${threadID}`) || 0;
-  if (Date.now() - threadActivity < 1500) {
-    recentReplies.set(`activity-${threadID}`, Date.now());
-    return;
-  }
-  recentReplies.set(`activity-${threadID}`, Date.now());
+  // Cooldown per tao
+  const lastReply = recentReplies.get(`${threadID}-${senderID}`) || 0;
+  if (Date.now() - lastReply < PERSON_COOLDOWN) return;
 
   try {
-    const humanDelay = getHumanDelay();
-    await sleep(humanDelay);
+    const delay = getRandomDelay();
+    await sleep(delay);
 
-    // 20% chance skip reply
-    if (Math.random() < 0.2) return;
+    // 40% chance HUWAG sumagot — mas natural!
+    if (Math.random() < 0.4) return;
+
+    // Reset counter minsan
+    if (Math.random() < 0.1) gcReplyCount.set(threadID, 0);
 
     const randomReply = AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)];
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
     recentReplies.set(`${threadID}-${senderID}`, Date.now());
 
-    // 60% chance lang mag-mention
-    const shouldMention = Math.random() > 0.4;
-    const messageBody = shouldMention 
+    // 50% chance lang mag-mention
+    const shouldMention = Math.random() > 0.5;
+    const msgBody = shouldMention 
       ? { body: randomReply, mentions: [{ tag: `@${senderID}`, id: senderID }] }
       : { body: randomReply };
 
-    api.sendMessage(messageBody, threadID, async (err, info) => {
+    api.sendMessage(msgBody, threadID, async (err, info) => {
       if (!err && info?.messageID) {
-        if (Math.random() > 0.35) {
-          await sleep(Math.floor(Math.random() * 1000) + 500);
+        // 40% chance lang mag-react
+        if (Math.random() > 0.6) {
+          await sleep(Math.floor(Math.random() * 1500) + 800);
           api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
         }
       }
@@ -168,7 +138,6 @@ module.exports.run = async function ({ api, event }) {
   const cmd = body.toLowerCase().trim();
   const data = loadData();
 
-  // Admin only
   if (senderID !== ADMIN_ID) {
     return api.sendMessage("❌ Hindi mo pwede gamitin 'to!", threadID, messageID);
   }
@@ -179,8 +148,8 @@ module.exports.run = async function ({ api, event }) {
     api.setMessageReaction("🥷", messageID, () => {}, true);
     return api.sendMessage(
       `🥷 RYUK: ONLINE\n\n` +
-      `⏱️ Delay: ~7s\n` +
-      `🛡️ Anti-Detection: ACTIVE\n` +
+      `⏱️ Reply Delay: 9-12 seconds\n` +
+      `🛡️ Low Profile Mode: ON\n` +
       `✋ I-type: ryuk off`,
       threadID,
       messageID
@@ -197,8 +166,8 @@ module.exports.run = async function ({ api, event }) {
   if (cmd === "ryuk status") {
     return api.sendMessage(
       isActive() 
-        ? "🥷 RYUK: ACTIVE — Nagbabantay..."
-        : "😹 RYUK: OFFLINE — Nagpapahinga...",
+        ? "🥷 RYUK: ACTIVE — Mabagal pero ligtas"
+        : "😹 RYUK: OFFLINE — Nagpapahinga",
       threadID,
       messageID
     );
@@ -208,7 +177,7 @@ module.exports.run = async function ({ api, event }) {
     `🥷 RYUK BOT\n\n` +
     `ryuk on    → I-ON 🥷\n` +
     `ryuk off   → I-OFF 😹\n` +
-    `ryuk status → Tignan status`,
+    `ryuk status → Status`,
     threadID,
     messageID
   );
