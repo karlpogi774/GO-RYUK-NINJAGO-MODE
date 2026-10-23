@@ -347,14 +347,20 @@ async function accountLogin(state, enableCommands = [], prefix, admin = []) {
             api.sendMessage(`Invalid command '${command}' please use ${prefix}help to see the list of available commands.`, event.threadID, event.messageID);
             return;
           }
-          for (const {
-              handleEvent,
-              name
+                    for (const { handleEvent, name } of Utils.handleEvent.values()) {
+            if (
+              typeof handleEvent !== "function" ||
+              !name ||
+              !(
+                (enableCommands[1].handleEvent || []).includes(name) ||
+                (enableCommands[0].commands || []).includes(name)
+              )
+            ) {
+              continue;
             }
-            of Utils.handleEvent.values()) {
-            if (handleEvent && name && (
-                (enableCommands[1].handleEvent || []).includes(name) || (enableCommands[0].commands || []).includes(name))) {
-              handleEvent({
+
+            try {
+              await handleEvent({
                 api,
                 event,
                 enableCommands,
@@ -362,8 +368,10 @@ async function accountLogin(state, enableCommands = [], prefix, admin = []) {
                 prefix,
                 blacklist
               });
+            } catch (error) {
+              console.error(`[Event Handler: ${name}]`, error.message);
             }
-          }
+              }
           switch (event.type) {
             case 'message':
             case 'message_reply':
