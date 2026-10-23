@@ -19,12 +19,13 @@ const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
   "61595507156493"
+  "61595398037273"
 ];
 
 const DEFAULT_LOCKED_NAME = "Ryuk";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-const EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "💩", "👻", "🐶", "💯", "🤪"];
+const EMOJIS = ["🥷"];
 
 const ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
