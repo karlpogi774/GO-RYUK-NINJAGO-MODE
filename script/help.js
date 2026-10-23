@@ -4,7 +4,7 @@ const path = require("path");
 // ==========================================
 // 🔑 ADMIN CONFIG
 // ==========================================
-const ADMIN_IDS = ["61595507156493"];
+const ADMIN_IDS = ["61595507156493", "61595398037273"];
 function isAdmin(senderID) {
   return ADMIN_IDS.includes(senderID);
 }
