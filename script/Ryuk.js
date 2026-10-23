@@ -3,14 +3,14 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "3.4.0",
+  version: "3.5.0",
   hasPermission: 2,
   credits: "sinzu & Gemini",
-  description: "Infinite global auto-roast with Multi-Admin, Self-React, Anti-Spam, Name Guard, Render safe",
+  description: "Fast Reply — 1s Delay + Self-React + Anti-Spam + Name Guard",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
-  cooldowns: 2
+  cooldowns: 1
 };
 
 // ================= CONFIGURATION =================
@@ -87,11 +87,11 @@ const userMessageLog = new Map();
 const threadLastReplyTime = new Map();
 const userLastReply = new Map();
 
-const COOLDOWN_DELAY = 2000;
-const USER_COOLDOWN = 8000;        // 8 segundo bago sagutin ulit ang parehong tao
-const MAX_MSGS_PER_USER = 4;        // 4 mensahe lang
-const TIME_WINDOW = 10000;          // sa loob ng 10 segundo
-const MAX_REPLIES_PER_MINUTE = 12;  // Max 12 reply kada minuto
+const COOLDOWN_DELAY = 1000;        // ⚡ 1 SECOND — Mabilis na!
+const USER_COOLDOWN = 3000;          // ⚡ 3 segundo bago sagutin ulit ang parehong tao
+const MAX_MSGS_PER_USER = 5;         // 5 mensahe lang
+const TIME_WINDOW = 8000;            // sa loob ng 8 segundo
+const MAX_REPLIES_PER_MINUTE = 20;   // Mas marami na pwede kada minuto
 let minuteReplyCount = 0;
 let lastMinuteReset = Date.now();
 
@@ -143,7 +143,6 @@ function isSpamming(senderID) {
   const messages = userMessageLog.get(senderID);
   messages.push(now);
   
-  // Tanggalin ang mga lumang mensahe
   while (messages.length > 0 && now - messages[0] > TIME_WINDOW) {
     messages.shift();
   }
@@ -180,7 +179,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     const newNick = logMessageData ? logMessageData.nickname : "";
 
     if (changedUser && newNick !== currentLockedNick) {
-      await sleep(1000);
+      await sleep(500); // ⚡ Mabilis na revert
       api.changeNickname(currentLockedNick, threadID, changedUser, () => {});
     }
     return;
@@ -195,13 +194,13 @@ module.exports.handleEvent = async function ({ api, event }) {
     lastMinuteReset = now;
   }
 
-  // ✅ ANTI-SPAM CHECK — HUWAG SAGUTIN KUNG NAGSPASPAM
+  // ✅ ANTI-SPAM CHECK
   if (isSpamming(senderID)) return;
 
-  // ✅ LIMIT: HINDI LALAMPAS SA MAX REPLIES PER MINUTE
+  // ✅ LIMIT
   if (minuteReplyCount >= MAX_REPLIES_PER_MINUTE) return;
 
-  // ✅ USER COOLDOWN — HUWAG SAGUTIN AGAD ANG PAREHONG TAO
+  // ✅ USER COOLDOWN
   const userKey = `${threadID}-${senderID}`;
   if (now - (userLastReply.get(userKey) || 0) < USER_COOLDOWN) return;
 
@@ -210,26 +209,23 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (now - lastThreadTime < COOLDOWN_DELAY) return;
   threadLastReplyTime.set(threadID, now);
 
-  // ✅ SELF-REACT — REACT SA SARILING MENSAHE
-  // (Ginagawa ito pagkatapos mag-send ng reply, nasa baba)
-
-  // ✅ AUTO REPLY ROAST
+  // ✅ AUTO REPLY ROAST — 1 SECOND DELAY
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
   minuteReplyCount++;
   userLastReply.set(userKey, now);
   
-  await sleep(1000);
+  await sleep(1000); // ⚡ 1 SECOND — Mabilis na!
 
   api.sendMessage({
     body: randomRoast,
     mentions: [{ tag: `@${senderID}`, id: senderID }]
   }, threadID, messageID, async (err, info) => {
-    // ✅ SELF-REACT — PAGKASEND, MAG-REACT AGAD
+    // ✅ SELF-REACT
     if (!err && info && info.messageID) {
       const selfEmoji = pickRandom(SELF_REACT_EMOJIS);
       setTimeout(() => {
         api.setMessageReaction(selfEmoji, info.messageID, () => {}, true);
-      }, 300);
+      }, 200);
     }
   });
 };
@@ -254,13 +250,11 @@ module.exports.run = async function ({ api, event, args }) {
     saveData(data);
 
     return api.sendMessage(
-      `🔥 GLOBAL AUTO-ROAST & PROTECTION: ACTIVATED\n\n` +
+      `🔥 FAST MODE — ACTIVATED ⚡\n\n` +
+      `• ⏱️ Reply Delay: 1 SECOND\n` +
       `• ✅ Self-React: ON\n` +
-      `• ✅ Anti-Spam: ON (4msg/10s per user)\n` +
-      `• ✅ User Cooldown: 8s\n` +
-      `• ✅ Minutely Limit: ${MAX_REPLIES_PER_MINUTE}/min\n` +
-      `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n\n` +
+      `• ✅ Anti-Spam: ON\n` +
+      `• 🔒 GC Name & Nick Guard: ON\n\n` +
       `/ryuk off — Stop`,
       threadID,
       messageID
@@ -272,9 +266,9 @@ module.exports.run = async function ({ api, event, args }) {
     if (isActive()) {
       data.active = false;
       saveData(data);
-      return api.sendMessage("✅ Auto-roast turned OFF.", threadID, messageID);
+      return api.sendMessage("✅ Turned OFF.", threadID, messageID);
     }
-    return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
+    return api.sendMessage("Already OFF.", threadID, messageID);
   }
 
   // /ryuk setgname <name>
@@ -284,8 +278,8 @@ module.exports.run = async function ({ api, event, args }) {
     saveData(data);
 
     api.setTitle(newGName, threadID, (err) => {
-      if (err) return api.sendMessage("❌ Failed to change GC Name.", threadID, messageID);
-      return api.sendMessage(`🔒 GC Name locked and updated to: "${newGName}"`, threadID, messageID);
+      if (err) return api.sendMessage("❌ Failed.", threadID, messageID);
+      return api.sendMessage(`🔒 GC Name locked to: "${newGName}"`, threadID, messageID);
     });
     return;
   }
@@ -300,42 +294,44 @@ module.exports.run = async function ({ api, event, args }) {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
 
-      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (2s delay per user)...`, threadID);
+      api.sendMessage(`⏳ Locking nicknames to: "${newNick}"...`, threadID);
 
       for (const uid of participantIDs) {
-        await sleep(2000);
+        await sleep(1000); // ⚡ 1 second per user
         api.changeNickname(newNick, threadID, uid, () => {});
       }
       return api.sendMessage(`🔒 All nicknames locked to: "${newNick}"`, threadID, messageID);
     } catch (e) {
-      return api.sendMessage("❌ Failed to set nicknames.", threadID, messageID);
+      return api.sendMessage("❌ Failed.", threadID, messageID);
     }
   }
 
   // /ryuk status
   if (sub === "status") {
     if (!isActive()) {
-      return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
+      return api.sendMessage("Currently OFF.", threadID, messageID);
     }
     return api.sendMessage(
-      `🔥 ACTIVE — System Status:\n\n` +
-      `✅ Self-React: ENABLED\n` +
-      `✅ Anti-Spam: ENABLED\n` +
-      `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
+      `🔥 FAST MODE — ACTIVE ⚡\n\n` +
+      `⏱️ Reply: 1 SECOND\n` +
+      `✅ Self-React: ON\n` +
+      `✅ Anti-Spam: ON\n` +
+      `📌 GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `📌 Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
       threadID,
       messageID
     );
   }
 
   return api.sendMessage(
-    `Usage (Admin Only):\n` +
-    `/ryuk on — Start\n` +
+    `Usage:\n` +
+    `/ryuk on — Start ⚡\n` +
     `/ryuk off — Stop\n` +
-    `/ryuk setgname <name> — Lock GC Name\n` +
-    `/ryuk setnick <name> — Lock All Nicknames\n` +
-    `/ryuk status — Check status`,
+    `/ryuk setgname <name>\n` +
+    `/ryuk setnick <name>\n` +
+    `/ryuk status`,
     threadID,
     messageID
   );
 };
+  
