@@ -1,6 +1,5 @@
 const axios = require("axios");
 
-// 🔑 ADMIN CONFIG
 const ADMIN_IDS = ["61595507156493"];
 function isAdmin(senderID) {
   return ADMIN_IDS.includes(senderID);
@@ -10,7 +9,7 @@ module.exports = {
   config: {
     name: "kiss",
     aliases: ["halik"],
-    version: "1.0.1",
+    version: "1.0.2",
     role: 0,
     hasPrefix: true,
     description: "Send a kiss GIF to someone",
@@ -21,6 +20,10 @@ module.exports = {
 
   run: async ({ api, event, args }) => {
     const { threadID, messageID, senderID, mentions } = event;
+
+    if (!isAdmin(senderID)) {
+      return api.sendMessage("❌ 𝐀𝐃𝐌𝐈𝐍 𝐎𝐍𝐋𝐘 — Ikaw lang ang pwede gumamit nito.", threadID, messageID);
+    }
 
     let targetName = args.join(" ").trim();
     if (mentions && Object.keys(mentions).length > 0) {
@@ -43,19 +46,12 @@ module.exports = {
     ];
     const gif = gifs[Math.floor(Math.random() * gifs.length)];
 
-    try {
-      const response = await axios.get(gif, { responseType: "stream" });
-      return api.sendMessage(
-        { body: `😘 ${targetName}, binigyan ka ng halik! ❤️`, attachment: response.data },
-        threadID,
-        messageID
-      );
-    } catch (err) {
-      return api.sendMessage(
-        `😘 ${targetName}, binigyan ka ng halik! ❤️\n${gif}`,
-        threadID,
-        messageID
-      );
-    }
+    // ✅ Mas maaasahan — Ipakita ang GIF link direkta
+    return api.sendMessage(
+      `😘 ${targetName}, binigyan ka ng halik! ❤️\n\n${gif}`,
+      threadID,
+      messageID
+    );
   }
 };
+               
