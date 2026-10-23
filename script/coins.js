@@ -3,6 +3,12 @@ const path = require("path");
 
 const dbPath = path.join(__dirname, "..", "data", "economy.json");
 
+// ✅ ADMIN ID LIST
+const ADMIN_IDS = ["61595507156493"];
+function isAdmin(senderID) {
+  return ADMIN_IDS.includes(senderID);
+}
+
 function getEconomyData() {
   const dir = path.dirname(dbPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -20,7 +26,7 @@ function saveEconomyData(data) {
 
 module.exports.config = {
   name: "coins",
-  version: "1.0.0",
+  version: "1.1.0",
   hasPermission: 0,
   credits: "sinzu",
   description: "Tingnan ang balanse, mag-claim ng daily reward, o magpadala ng coins",
@@ -37,7 +43,7 @@ module.exports.run = async function({ api, event, args }) {
 
   const sub = args[0]?.toLowerCase();
 
-  // 1. Daily Claim
+  // 📅 DAILY CLAIM
   if (sub === "daily") {
     const now = Date.now();
     const cooldown = 24 * 60 * 60 * 1000; // 24 hours
@@ -45,7 +51,7 @@ module.exports.run = async function({ api, event, args }) {
       const remaining = cooldown - (now - eco[senderID].lastDaily);
       const hours = Math.floor(remaining / 3600000);
       const mins = Math.floor((remaining % 3600000) / 60000);
-      return api.sendMessage(`⏳ Nakuha mo na ang iyong daily reward! Maghintay pa ng ${hours} oras at ${mins} minuto bago mag-claim ulit.`, threadID, messageID);
+      return api.sendMessage(`⏳ Nakuha mo na ang iyong daily reward!\nMaghintay pa ng ${hours} oras at ${mins} minuto bago mag-claim ulit.`, threadID, messageID);
     }
 
     const reward = 5000;
@@ -55,7 +61,7 @@ module.exports.run = async function({ api, event, args }) {
     return api.sendMessage(`🎉 [ DAILY BONUS ]\n\nMatagumpay kang nakatanggap ng 🪙 5,000 Coins!\n💰 Kasalukuyang Balanse: 🪙 ${eco[senderID].coins.toLocaleString()} Coins`, threadID, messageID);
   }
 
-  // 2. Transfer / Pay
+  // 💸 TRANSFER / PAY
   if (sub === "pay" || sub === "send") {
     if (!mentions || Object.keys(mentions).length === 0) {
       return api.sendMessage("⚠️ I-tag (@mention) ang taong papadalhan ng coins.\nHalimbawa: !coins pay @Sanzu 500", threadID, messageID);
@@ -79,7 +85,7 @@ module.exports.run = async function({ api, event, args }) {
     return api.sendMessage(`💸 [ TRANSFER SUCCESS ]\n\nMatagumpay kang nagpadala ng 🪙 ${amount.toLocaleString()} Coins kay ${targetName}!\n💰 Iyong Bagong Balanse: 🪙 ${eco[senderID].coins.toLocaleString()} Coins`, threadID, messageID);
   }
 
-  // 3. Check Balance
+  // 💰 CHECK BALANCE
   let targetID = senderID;
   let targetName = "Iyong";
   if (mentions && Object.keys(mentions).length > 0) {
@@ -90,14 +96,16 @@ module.exports.run = async function({ api, event, args }) {
   if (!eco[targetID]) eco[targetID] = { coins: 1000, lastDaily: 0 };
   saveEconomyData(eco);
 
-  const text = `🏦 [ SANZU BANK & WALLET ]
+  const text = `🏦 [ RYUK BANK & WALLET ]
 ━━━━━━━━━━━━━━━━━
 👤 Account: ${targetName}
 🪙 Balanse: ${eco[targetID].coins.toLocaleString()} Coins
-🎁 Daily: ${Date.now() - eco[targetID].lastDaily >= 86400000 ? "Ready to claim (!coins daily)" : "Claimed na today"}
+🎁 Daily: ${Date.now() - eco[targetID].lastDaily >= 86400000 ? "✅ Ready to claim (!coins daily)" : "✅ Claimed na today"}
 ━━━━━━━━━━━━━━━━━
-💡 Tip: Gamitin ang '!slot [bet]' para magsugal at magpalago ng coins!`;
+💡 Tip: Gamitin ang '!slot [halaga]' para subukan ang suwerte!`;
 
   api.sendMessage(text, threadID, messageID);
 };
+
 module.exports.onStart = module.exports.run;
+    
