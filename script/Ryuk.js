@@ -2,14 +2,14 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports.config = {
-  name: "Ryuk",
-  version: "3.1.0",
-  hasPermission: 1, // Require Admin Permission Level
+  name: "ryuk",
+  version: "3.2.0",
+  hasPermission: 1,
   credits: "sinzu & Gemini",
   description: "Infinite global auto-roast with Multi-Admin Locks, Render fix, 2s setnick delay, Auto React, and Name Guard.",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/Ryuk on | off | status | setgname <name> | setnick <name>",
+  usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
   cooldowns: 2
 };
 
@@ -84,19 +84,23 @@ const ROASTS = [
 const threadLastReplyTime = new Map();
 const COOLDOWN_DELAY = 2000;
 
+let localMemoryData = { active: false, activatedBy: null, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
+
 function loadData() {
   try {
     if (fs.existsSync(DATA_PATH)) {
       const content = fs.readFileSync(DATA_PATH, "utf8");
-      return JSON.parse(content);
+      localMemoryData = JSON.parse(content);
+      return localMemoryData;
     }
   } catch (err) {
     console.error("[Data Load Error]:", err.message);
   }
-  return { active: false, activatedBy: null, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
+  return localMemoryData;
 }
 
 function saveData(data) {
+  localMemoryData = data;
   try {
     fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), "utf8");
   } catch (err) {
@@ -187,7 +191,7 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // /Ryuk on
+  // /ryuk on
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
@@ -202,13 +206,13 @@ module.exports.run = async function ({ api, event, args }) {
       `• Auto-Reply Cooldown: 2 Seconds\n` +
       `• Setnick Delay: 2 Seconds/User\n\n` +
       `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
-      `Gamitin ang "/Ryuk off" kapag gustong ihinto.`,
+      `Gamitin ang "/ryuk off" kapag gustong ihinto.`,
       threadID,
       messageID
     );
   }
 
-  // /Ryuk off
+  // /ryuk off
   if (sub === "off") {
     if (isActive()) {
       data.active = false;
@@ -218,7 +222,7 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
   }
 
-  // /Ryuk setgname <name>
+  // /ryuk setgname <name>
   if (sub === "setgname") {
     const newGName = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedGName = newGName;
@@ -231,7 +235,7 @@ module.exports.run = async function ({ api, event, args }) {
     return;
   }
 
-  // /Ryuk setnick <name>
+  // /ryuk setnick <name>
   if (sub === "setnick") {
     const newNick = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedNick = newNick;
@@ -253,7 +257,7 @@ module.exports.run = async function ({ api, event, args }) {
     }
   }
 
-  // /Ryuk status
+  // /ryuk status
   if (sub === "status") {
     if (!isActive()) {
       return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
@@ -270,11 +274,11 @@ module.exports.run = async function ({ api, event, args }) {
 
   return api.sendMessage(
     `Usage (Admin Only):\n` +
-    `/Ryuk on — Start Infinite Auto-Roast\n` +
-    `/Ryuk off — Stop Auto-Roast\n` +
-    `/Ryuk setgname <name> — Lock GC Name (Default: Ryuk)\n` +
-    `/Ryuk setnick <name> — Lock All Nicknames (Default: Ryuk)\n` +
-    `/Ryuk status — Check status`,
+    `/ryuk on — Start Infinite Auto-Roast\n` +
+    `/ryuk off — Stop Auto-Roast\n` +
+    `/ryuk setgname <name> — Lock GC Name (Default: Ryuk)\n` +
+    `/ryuk setnick <name> — Lock All Nicknames (Default: Ryuk)\n` +
+    `/ryuk status — Check status`,
     threadID,
     messageID
   );
