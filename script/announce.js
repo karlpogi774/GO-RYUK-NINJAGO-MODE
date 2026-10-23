@@ -13,7 +13,7 @@ module.exports = {
 
   // ✅ ADMIN ID LIST
   isAdmin: function(senderID) {
-    const ADMIN_IDS = ["61595507156493"]; // Your ID here
+    const ADMIN_IDS = ["61595507156493", "61595398037273"]; // Your ID here
     return ADMIN_IDS.includes(senderID);
   },
 
