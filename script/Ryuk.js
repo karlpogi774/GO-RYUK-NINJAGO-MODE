@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "3.3.0",
+  version: "3.4.0",
   hasPermission: 2,
   credits: "sinzu & Gemini",
-  description: "Infinite global auto-roast with Multi-Admin Locks, Render fix, 2s setnick delay, Auto React, and Name Guard.",
+  description: "Infinite global auto-roast with Multi-Admin, Self-React, Anti-Spam, Name Guard, Render safe",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
@@ -14,7 +14,6 @@ module.exports.config = {
 };
 
 // ================= CONFIGURATION =================
-// LISTAHAN NG MGA ADMIN UIDs
 const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
@@ -25,7 +24,8 @@ const ADMIN_UIDS = [
 const DEFAULT_LOCKED_NAME = "Ryuk";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-const EMOJIS = ["🥷"];
+// ✅ SELF-REACT EMOJIS
+const SELF_REACT_EMOJIS = ["🥷", "🗡️", "⚔️", "🔥", "💀"];
 
 const ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
@@ -82,8 +82,18 @@ const ROASTS = [
   "Minsan na nga lang mag-chat, nakakairita pa. 💯 🤪"
 ];
 
+// ✅ ANTI-SPAM SYSTEM
+const userMessageLog = new Map();
 const threadLastReplyTime = new Map();
+const userLastReply = new Map();
+
 const COOLDOWN_DELAY = 2000;
+const USER_COOLDOWN = 8000;        // 8 segundo bago sagutin ulit ang parehong tao
+const MAX_MSGS_PER_USER = 4;        // 4 mensahe lang
+const TIME_WINDOW = 10000;          // sa loob ng 10 segundo
+const MAX_REPLIES_PER_MINUTE = 12;  // Max 12 reply kada minuto
+let minuteReplyCount = 0;
+let lastMinuteReset = Date.now();
 
 let localMemoryData = { active: false, activatedBy: null, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
 
@@ -120,10 +130,31 @@ function checkIsAdmin(senderID) {
   return ADMIN_UIDS.includes(String(senderID));
 }
 
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ✅ ANTI-SPAM CHECK
+function isSpamming(senderID) {
+  const now = Date.now();
+  if (!userMessageLog.has(senderID)) {
+    userMessageLog.set(senderID, []);
+  }
+  const messages = userMessageLog.get(senderID);
+  messages.push(now);
+  
+  // Tanggalin ang mga lumang mensahe
+  while (messages.length > 0 && now - messages[0] > TIME_WINDOW) {
+    messages.shift();
+  }
+  return messages.length > MAX_MSGS_PER_USER;
+}
+
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID, logMessageType, logMessageData } = event;
   const data = loadData();
+  const currentUserID = api.getCurrentUserID();
 
   if (!isActive()) return;
 
@@ -155,29 +186,52 @@ module.exports.handleEvent = async function ({ api, event }) {
     return;
   }
 
-  if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
+  if (!body || body.startsWith("/") || senderID === currentUserID) return;
 
-  // 3. 2 SECONDS AUTO REPLY COOLDOWN
+  // ✅ RESET MINUTE COUNTER
   const now = Date.now();
-  const lastThreadTime = threadLastReplyTime.get(threadID) || 0;
-
-  if (now - lastThreadTime < COOLDOWN_DELAY) {
-    return;
+  if (now - lastMinuteReset > 60000) {
+    minuteReplyCount = 0;
+    lastMinuteReset = now;
   }
+
+  // ✅ ANTI-SPAM CHECK — HUWAG SAGUTIN KUNG NAGSPASPAM
+  if (isSpamming(senderID)) return;
+
+  // ✅ LIMIT: HINDI LALAMPAS SA MAX REPLIES PER MINUTE
+  if (minuteReplyCount >= MAX_REPLIES_PER_MINUTE) return;
+
+  // ✅ USER COOLDOWN — HUWAG SAGUTIN AGAD ANG PAREHONG TAO
+  const userKey = `${threadID}-${senderID}`;
+  if (now - (userLastReply.get(userKey) || 0) < USER_COOLDOWN) return;
+
+  // ✅ THREAD COOLDOWN
+  const lastThreadTime = threadLastReplyTime.get(threadID) || 0;
+  if (now - lastThreadTime < COOLDOWN_DELAY) return;
   threadLastReplyTime.set(threadID, now);
 
-  // 4. AUTO REACT
-  const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-  api.setMessageReaction(randomEmoji, messageID, () => {}, true);
+  // ✅ SELF-REACT — REACT SA SARILING MENSAHE
+  // (Ginagawa ito pagkatapos mag-send ng reply, nasa baba)
 
-  // 5. AUTO REPLY ROAST
+  // ✅ AUTO REPLY ROAST
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
+  minuteReplyCount++;
+  userLastReply.set(userKey, now);
+  
   await sleep(1000);
 
   api.sendMessage({
     body: randomRoast,
     mentions: [{ tag: `@${senderID}`, id: senderID }]
-  }, threadID, messageID);
+  }, threadID, messageID, async (err, info) => {
+    // ✅ SELF-REACT — PAGKASEND, MAG-REACT AGAD
+    if (!err && info && info.messageID) {
+      const selfEmoji = pickRandom(SELF_REACT_EMOJIS);
+      setTimeout(() => {
+        api.setMessageReaction(selfEmoji, info.messageID, () => {}, true);
+      }, 300);
+    }
+  });
 };
 
 // ===== COMMAND HANDLER =====
@@ -200,14 +254,14 @@ module.exports.run = async function ({ api, event, args }) {
     saveData(data);
 
     return api.sendMessage(
-      `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
-      `• Mode: Infinite / Permanent (Walang Hinto)\n` +
+      `🔥 GLOBAL AUTO-ROAST & PROTECTION: ACTIVATED\n\n` +
+      `• ✅ Self-React: ON\n` +
+      `• ✅ Anti-Spam: ON (4msg/10s per user)\n` +
+      `• ✅ User Cooldown: 8s\n` +
+      `• ✅ Minutely Limit: ${MAX_REPLIES_PER_MINUTE}/min\n` +
       `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
-      `• Auto-Reply Cooldown: 2 Seconds\n` +
-      `• Setnick Delay: 2 Seconds/User\n\n` +
-      `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
-      `Gamitin ang "/ryuk off" kapag gustong ihinto.`,
+      `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n\n` +
+      `/ryuk off — Stop`,
       threadID,
       messageID
     );
@@ -218,7 +272,7 @@ module.exports.run = async function ({ api, event, args }) {
     if (isActive()) {
       data.active = false;
       saveData(data);
-      return api.sendMessage("✅ Infinite Auto-Roast turned OFF.", threadID, messageID);
+      return api.sendMessage("✅ Auto-roast turned OFF.", threadID, messageID);
     }
     return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
   }
@@ -264,8 +318,9 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
     }
     return api.sendMessage(
-      `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
-      `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
+      `🔥 ACTIVE — System Status:\n\n` +
+      `✅ Self-React: ENABLED\n` +
+      `✅ Anti-Spam: ENABLED\n` +
       `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
       threadID,
@@ -275,13 +330,12 @@ module.exports.run = async function ({ api, event, args }) {
 
   return api.sendMessage(
     `Usage (Admin Only):\n` +
-    `/ryuk on — Start Infinite Auto-Roast\n` +
-    `/ryuk off — Stop Auto-Roast\n` +
-    `/ryuk setgname <name> — Lock GC Name (Default: Ryuk)\n` +
-    `/ryuk setnick <name> — Lock All Nicknames (Default: Ryuk)\n` +
+    `/ryuk on — Start\n` +
+    `/ryuk off — Stop\n` +
+    `/ryuk setgname <name> — Lock GC Name\n` +
+    `/ryuk setnick <name> — Lock All Nicknames\n` +
     `/ryuk status — Check status`,
     threadID,
     messageID
   );
 };
-  
