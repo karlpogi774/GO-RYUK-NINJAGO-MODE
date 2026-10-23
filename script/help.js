@@ -1,11 +1,19 @@
 const fs = require("fs");
 const path = require("path");
 
+// ==========================================
+// 🔑 ADMIN CONFIG
+// ==========================================
+const ADMIN_IDS = ["61595507156493"];
+function isAdmin(senderID) {
+  return ADMIN_IDS.includes(senderID);
+}
+
 module.exports.config = {
   name: "help",
-  version: "2.0.0",
+  version: "2.1.1",
   hasPermission: 0,
-  credits: "Sinzu",
+  credits: "Ryuk",
   description: "Automatic command list — detects old and new commands.",
   commandCategory: "general",
   usages: "[command name]",
@@ -13,6 +21,12 @@ module.exports.config = {
 };
 
 module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, senderID } = event;
+
+  // ✅ Kung gusto mong admin-only lang makakita ng full help, i-uncomment mo ito:
+  // if (!isAdmin(senderID)) {
+  //   return api.sendMessage("❌ 𝐀𝐃𝐌𝐈𝐍 𝐎𝐍𝐋𝐘 — Ikaw lang ang pwede makita ang listahan ng commands.", threadID, messageID);
+  // }
 
   // ==========================================
   // AUTO DETECT COMMANDS
@@ -61,8 +75,8 @@ module.exports.run = async function ({ api, event, args }) {
 
     return api.sendMessage(
       "❌ Hindi ma-load ang command folder.",
-      event.threadID,
-      event.messageID
+      threadID,
+      messageID
     );
   }
 
@@ -109,8 +123,8 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage(
         `❌ Walang command na "${cmdName}".\n\n` +
         `Type "${prefix}help" para makita lahat ng commands.`,
-        event.threadID,
-        event.messageID
+        threadID,
+        messageID
       );
     }
 
@@ -135,8 +149,8 @@ module.exports.run = async function ({ api, event, args }) {
 
       `━━━━━━━━━━━━━━━━\n` +
       `Type "${prefix}help" para sa lahat ng commands.`,
-      event.threadID,
-      event.messageID
+      threadID,
+      messageID
     );
   }
 
@@ -164,10 +178,10 @@ module.exports.run = async function ({ api, event, args }) {
 
   let msg =
     `╭────────────────────────╮\n` +
-    `     📖 SINZU BOT — HELP\n` +
+    `     📖 RYUK BOT — HELP\n` +
     `╰────────────────────────╯\n\n`;
 
-  msg += `👑 Owner: Sinzu\n`;
+  msg += `👑 Owner: Ryuk\n`;
   msg += `📦 Total Commands: ${commandList.length}\n\n`;
 
   msg += `━━━━━━━━━━━━━━━━━━━━\n`;
@@ -190,7 +204,8 @@ module.exports.run = async function ({ api, event, args }) {
 
   return api.sendMessage(
     msg,
-    event.threadID,
-    event.messageID
+    threadID,
+    messageID
   );
 };
+  
