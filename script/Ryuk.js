@@ -2,18 +2,19 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports.config = {
-  name: "ryuk",
-  version: "3.5.0",
-  hasPermission: 2,
+  name: "Gojo",
+  version: "3.4.0",
+  hasPermission: 0, // Set to 0 to handle multi-admin internally
   credits: "sinzu & Gemini",
-  description: "Fast Reply — 1s Delay + Self-React + Anti-Spam + Name Guard",
+  description: "Infinite global auto-roast with Multi-Admin Locks, Anti-Spam, Render fix, 2s setnick delay, Auto React, and Name Guard.",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
-  cooldowns: 1
+  usages: "/Gojo on | off | status | setgname <name> | setnick <name>",
+  cooldowns: 2
 };
 
 // ================= CONFIGURATION =================
+// LISTAHAN NG MGA ADMIN UIDs
 const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
@@ -24,8 +25,7 @@ const ADMIN_UIDS = [
 const DEFAULT_LOCKED_NAME = "Ryuk";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-// ✅ SELF-REACT EMOJIS
-const SELF_REACT_EMOJIS = ["🥷", "🗡️", "⚔️", "🔥", "💀"];
+const EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "💩", "👻", "🐶", "💯", "🤪"];
 
 const ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
@@ -82,18 +82,11 @@ const ROASTS = [
   "Minsan na nga lang mag-chat, nakakairita pa. 💯 🤪"
 ];
 
-// ✅ ANTI-SPAM SYSTEM
-const userMessageLog = new Map();
+// Anti-Spam Memory Maps & Cooldowns
+const userLastMsgTime = new Map();
 const threadLastReplyTime = new Map();
-const userLastReply = new Map();
-
-const COOLDOWN_DELAY = 1000;        // ⚡ 1 SECOND — Mabilis na!
-const USER_COOLDOWN = 3000;          // ⚡ 3 segundo bago sagutin ulit ang parehong tao
-const MAX_MSGS_PER_USER = 5;         // 5 mensahe lang
-const TIME_WINDOW = 8000;            // sa loob ng 8 segundo
-const MAX_REPLIES_PER_MINUTE = 20;   // Mas marami na pwede kada minuto
-let minuteReplyCount = 0;
-let lastMinuteReset = Date.now();
+const SPAM_USER_LIMIT = 2500; // 2.5s cooldown per spamming user
+const COOLDOWN_DELAY = 2000;    // 2s delay between bot auto-replies
 
 let localMemoryData = { active: false, activatedBy: null, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
 
@@ -130,30 +123,10 @@ function checkIsAdmin(senderID) {
   return ADMIN_UIDS.includes(String(senderID));
 }
 
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// ✅ ANTI-SPAM CHECK
-function isSpamming(senderID) {
-  const now = Date.now();
-  if (!userMessageLog.has(senderID)) {
-    userMessageLog.set(senderID, []);
-  }
-  const messages = userMessageLog.get(senderID);
-  messages.push(now);
-  
-  while (messages.length > 0 && now - messages[0] > TIME_WINDOW) {
-    messages.shift();
-  }
-  return messages.length > MAX_MSGS_PER_USER;
-}
-
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID, logMessageType, logMessageData } = event;
   const data = loadData();
-  const currentUserID = api.getCurrentUserID();
 
   if (!isActive()) return;
 
@@ -179,55 +152,38 @@ module.exports.handleEvent = async function ({ api, event }) {
     const newNick = logMessageData ? logMessageData.nickname : "";
 
     if (changedUser && newNick !== currentLockedNick) {
-      await sleep(500); // ⚡ Mabilis na revert
+      await sleep(1000);
       api.changeNickname(currentLockedNick, threadID, changedUser, () => {});
     }
     return;
   }
 
-  if (!body || body.startsWith("/") || senderID === currentUserID) return;
+  if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
 
-  // ✅ RESET MINUTE COUNTER
+  // 3. ANTI-SPAM & RATE LIMIT CHECK
   const now = Date.now();
-  if (now - lastMinuteReset > 60000) {
-    minuteReplyCount = 0;
-    lastMinuteReset = now;
-  }
-
-  // ✅ ANTI-SPAM CHECK
-  if (isSpamming(senderID)) return;
-
-  // ✅ LIMIT
-  if (minuteReplyCount >= MAX_REPLIES_PER_MINUTE) return;
-
-  // ✅ USER COOLDOWN
-  const userKey = `${threadID}-${senderID}`;
-  if (now - (userLastReply.get(userKey) || 0) < USER_COOLDOWN) return;
-
-  // ✅ THREAD COOLDOWN
+  const lastUserTime = userLastMsgTime.get(senderID) || 0;
   const lastThreadTime = threadLastReplyTime.get(threadID) || 0;
-  if (now - lastThreadTime < COOLDOWN_DELAY) return;
+
+  // Ignore rapid/spamming user messages
+  if (now - lastUserTime < SPAM_USER_LIMIT || now - lastThreadTime < COOLDOWN_DELAY) {
+    return;
+  }
+  userLastMsgTime.set(senderID, now);
   threadLastReplyTime.set(threadID, now);
 
-  // ✅ AUTO REPLY ROAST — 1 SECOND DELAY
+  // 4. AUTO REACT
+  const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+  api.setMessageReaction(randomEmoji, messageID, () => {}, true);
+
+  // 5. AUTO REPLY ROAST
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-  minuteReplyCount++;
-  userLastReply.set(userKey, now);
-  
-  await sleep(1000); // ⚡ 1 SECOND — Mabilis na!
+  await sleep(1000);
 
   api.sendMessage({
     body: randomRoast,
     mentions: [{ tag: `@${senderID}`, id: senderID }]
-  }, threadID, messageID, async (err, info) => {
-    // ✅ SELF-REACT
-    if (!err && info && info.messageID) {
-      const selfEmoji = pickRandom(SELF_REACT_EMOJIS);
-      setTimeout(() => {
-        api.setMessageReaction(selfEmoji, info.messageID, () => {}, true);
-      }, 200);
-    }
-  });
+  }, threadID, messageID);
 };
 
 // ===== COMMAND HANDLER =====
@@ -242,7 +198,7 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // /ryuk on
+  // /Gojo on
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
@@ -250,41 +206,44 @@ module.exports.run = async function ({ api, event, args }) {
     saveData(data);
 
     return api.sendMessage(
-      `🔥 FAST MODE — ACTIVATED ⚡\n\n` +
-      `• ⏱️ Reply Delay: 1 SECOND\n` +
-      `• ✅ Self-React: ON\n` +
-      `• ✅ Anti-Spam: ON\n` +
-      `• 🔒 GC Name & Nick Guard: ON\n\n` +
-      `/ryuk off — Stop`,
+      `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
+      `• Mode: Infinite / Permanent (Walang Hinto)\n` +
+      `• Anti-Spam: ENABLED\n` +
+      `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
+      `• Auto-Reply Cooldown: 2 Seconds\n` +
+      `• Setnick Delay: 2 Seconds/User\n\n` +
+      `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
+      `Gamitin ang "/Gojo off" kapag gustong ihinto.`,
       threadID,
       messageID
     );
   }
 
-  // /ryuk off
+  // /Gojo off
   if (sub === "off") {
     if (isActive()) {
       data.active = false;
       saveData(data);
-      return api.sendMessage("✅ Turned OFF.", threadID, messageID);
+      return api.sendMessage("✅ Infinite Auto-Roast turned OFF.", threadID, messageID);
     }
-    return api.sendMessage("Already OFF.", threadID, messageID);
+    return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
   }
 
-  // /ryuk setgname <name>
+  // /Gojo setgname <name>
   if (sub === "setgname") {
     const newGName = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedGName = newGName;
     saveData(data);
 
     api.setTitle(newGName, threadID, (err) => {
-      if (err) return api.sendMessage("❌ Failed.", threadID, messageID);
-      return api.sendMessage(`🔒 GC Name locked to: "${newGName}"`, threadID, messageID);
+      if (err) return api.sendMessage("❌ Failed to change GC Name.", threadID, messageID);
+      return api.sendMessage(`🔒 GC Name locked and updated to: "${newGName}"`, threadID, messageID);
     });
     return;
   }
 
-  // /ryuk setnick <name>
+  // /Gojo setnick <name>
   if (sub === "setnick") {
     const newNick = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedNick = newNick;
@@ -294,44 +253,42 @@ module.exports.run = async function ({ api, event, args }) {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
 
-      api.sendMessage(`⏳ Locking nicknames to: "${newNick}"...`, threadID);
+      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (2s delay per user)...`, threadID);
 
       for (const uid of participantIDs) {
-        await sleep(1000); // ⚡ 1 second per user
+        await sleep(2000);
         api.changeNickname(newNick, threadID, uid, () => {});
       }
       return api.sendMessage(`🔒 All nicknames locked to: "${newNick}"`, threadID, messageID);
     } catch (e) {
-      return api.sendMessage("❌ Failed.", threadID, messageID);
+      return api.sendMessage("❌ Failed to set nicknames.", threadID, messageID);
     }
   }
 
-  // /ryuk status
+  // /Gojo status
   if (sub === "status") {
     if (!isActive()) {
-      return api.sendMessage("Currently OFF.", threadID, messageID);
+      return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
     }
     return api.sendMessage(
-      `🔥 FAST MODE — ACTIVE ⚡\n\n` +
-      `⏱️ Reply: 1 SECOND\n` +
-      `✅ Self-React: ON\n` +
-      `✅ Anti-Spam: ON\n` +
-      `📌 GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `📌 Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
+      `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
+      `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
+      `🛡️ Anti-Spam: Active\n` +
+      `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
       threadID,
       messageID
     );
   }
 
   return api.sendMessage(
-    `Usage:\n` +
-    `/ryuk on — Start ⚡\n` +
-    `/ryuk off — Stop\n` +
-    `/ryuk setgname <name>\n` +
-    `/ryuk setnick <name>\n` +
-    `/ryuk status`,
+    `Usage (Admin Only):\n` +
+    `/Gojo on — Start Infinite Auto-Roast\n` +
+    `/Gojo off — Stop Auto-Roast\n` +
+    `/Gojo setgname <name> — Lock GC Name (Default: Ryuk)\n` +
+    `/Gojo setnick <name> — Lock All Nicknames (Default: Ryuk)\n` +
+    `/Gojo status — Check status`,
     threadID,
     messageID
   );
 };
-  
