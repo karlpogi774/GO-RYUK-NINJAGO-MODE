@@ -2,19 +2,19 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports.config = {
-  name: "ryuk",
-  version: "17.2.0",
+  name: "autoreply",
+  version: "19.0.0",
   hasPermission: 0,
   credits: "RYUK",
-  description: "Fast Reply + Smart Anti-Detect",
+  description: "🌿 Natural Reply — Hindi Halata",
   usePrefix: false,
   commandCategory: "Admin",
-  usages: "ryuk on | ryuk off",
+  usages: "autoreply on | autoreply off",
   cooldowns: 0
 };
 
 const ADMIN_ID = "61595507156493";
-const DATA_PATH = path.join(__dirname, "ryuk_data.json");
+const DATA_PATH = path.join(__dirname, "autoreply_data.json");
 
 const AUTO_REPLIES = [
   "Sige lang.",
@@ -23,7 +23,9 @@ const AUTO_REPLIES = [
   "Sige na lang.",
   "Okay lang 'yan.",
   "Kaya mo 'yan.",
-  "Nandito lang ako."
+  "Nandito lang ako.",
+  "Ganoon talaga minsan.",
+  "Ako rin naman eh."
 ];
 
 function loadData() {
@@ -43,9 +45,9 @@ function isActive() {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ⏱️ 1-2 segundo — mabilis pero hindi eksaktong pareho palagi
-const MIN_DELAY = 1000;
-const MAX_DELAY = 2000;
+// ⏱️ 5 hanggang 12 segundo — parang totoong tao na nag-iisip
+const MIN_DELAY = 5000;
+const MAX_DELAY = 12000;
 
 function getRandomDelay() {
   return Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;
@@ -55,13 +57,18 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// 🛡️ ANTI-DETECT PROTECTION
+// 🛡️ PROTECTION — para hindi mag-overload
 const lastReply = new Map();
-let replyCountThisMinute = 0;
-let lastMinuteReset = Date.now();
+const gcCounter = new Map();
+let minuteCount = 0;
+let hourCount = 0;
+let lastMinute = Date.now();
+let lastHour = Date.now();
 
-const MAX_REPLIES_PER_MINUTE = 6;     // Max 6 reply kada minuto
-const PER_PERSON_GAP = 12000;         // 12 segundo bago ulit sa parehong tao
+const MAX_PER_MINUTE = 4;      // 4 reply lang kada minuto
+const MAX_PER_HOUR = 25;       // 25 reply lang kada oras
+const MAX_PER_GC = 8;          // 8 reply lang sa iisang GC kada oras
+const PER_PERSON_GAP = 45000;  // 45 segundo bago ulit sa parehong tao
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
@@ -69,20 +76,33 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (!body || senderID === api.getCurrentUserID()) return;
   
   const msg = body.toLowerCase().trim();
-  if (msg === "ryuk") return;
+  if (msg === "autoreply") return;
   if (!isActive()) return;
 
-  // Reset counter kada minuto
   const now = Date.now();
-  if (now - lastMinuteReset > 60000) {
-    replyCountThisMinute = 0;
-    lastMinuteReset = now;
+
+  // Reset kada minuto
+  if (now - lastMinute > 60000) {
+    minuteCount = 0;
+    lastMinute = now;
   }
 
-  // 🚫 Limit: hindi lalampas sa 6 reply kada minuto
-  if (replyCountThisMinute >= MAX_REPLIES_PER_MINUTE) return;
+  // Reset kada oras
+  if (now - lastHour > 3600000) {
+    hourCount = 0;
+    lastHour = now;
+    gcCounter.clear();
+  }
 
-  // 🚫 Hindi agad sasagot sa parehong tao
+  // 🚫 Sobrang daming tanong = huwag sagutin
+  if (minuteCount >= MAX_PER_MINUTE) return;
+  if (hourCount >= MAX_PER_HOUR) return;
+
+  // 🚫 Limit sa bawat GC
+  gcCounter.set(threadID, (gcCounter.get(threadID) || 0) + 1);
+  if (gcCounter.get(threadID) > MAX_PER_GC) return;
+
+  // 🚫 Huwag sagutin agad ang parehong tao
   const key = `${threadID}-${senderID}`;
   if (now - (lastReply.get(key) || 0) < PER_PERSON_GAP) return;
 
@@ -90,11 +110,12 @@ module.exports.handleEvent = async function ({ api, event }) {
     const delay = getRandomDelay();
     await sleep(delay);
 
-    // 🎲 25% chance HUWAG sumagot — para hindi mukhang robot
-    if (Math.random() < 0.25) return;
+    // 🎲 40% chance HUWAG sumagot — minsan hindi tao rin nakakasagot agad
+    if (Math.random() < 0.4) return;
 
     lastReply.set(key, Date.now());
-    replyCountThisMinute++;
+    minuteCount++;
+    hourCount++;
     
     api.sendMessage(pickRandom(AUTO_REPLIES), threadID, messageID);
     
@@ -110,16 +131,15 @@ module.exports.run = async function ({ api, event }) {
 
   if (senderID !== ADMIN_ID) return;
 
-  if (cmd === "ryuk on") {
+  if (cmd === "autoreply on") {
     data.active = true;
     saveData(data);
-    return api.sendMessage("🥷 ON — 1-2s delay + Anti-Detect ON", threadID, messageID);
+    return api.sendMessage("🌿 AutoReply ON — Natural Mode", threadID, messageID);
   }
 
-  if (cmd === "ryuk off") {
+  if (cmd === "autoreply off") {
     data.active = false;
     saveData(data);
-    return api.sendMessage("😹 OFF", threadID, messageID);
+    return api.sendMessage("😿 AutoReply OFF", threadID, messageID);
   }
 };
-  
