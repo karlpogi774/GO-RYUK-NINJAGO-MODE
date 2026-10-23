@@ -3,8 +3,8 @@ const path = require("path");
 
 module.exports.config = {
   name: "Gojo",
-  version: "3.4.0",
-  hasPermission: 0, // Set to 0 to handle multi-admin internally
+  version: "3.5.0",
+  hasPermission: 2, // Permission level set to 2 (Bot Owner / Admin)
   credits: "sinzu & Gemini",
   description: "Infinite global auto-roast with Multi-Admin Locks, Anti-Spam, Render fix, 2s setnick delay, Auto React, and Name Guard.",
   usePrefix: true,
@@ -27,6 +27,7 @@ const DATA_PATH = path.join(__dirname, "activate_data.json");
 
 const EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "💩", "👻", "🐶", "💯", "🤪"];
 
+// Massive List of Roast Lines
 const ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
   "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣 💯 🤪",
@@ -79,7 +80,21 @@ const ROASTS = [
   "Pa-bida ka na naman, wala namang pumapansin sa'yo. 💯 🤪",
   "Magkano bayad sa'yo para maging ganyan ka-epal araw-araw? 💯 🤪",
   "May pa-type type ka pa, burahin mo na lang 'yan pre. 💯 🤪",
-  "Minsan na nga lang mag-chat, nakakairita pa. 💯 🤪"
+  "Minsan na nga lang mag-chat, nakakairita pa. 💯 🤪",
+  "I-tago mo muna 'yang phone mo lods, nagpapatunay ka lang ng kawalan ng amag sa utak. 💀 💯 🤪",
+  "Ang lakas ng radar mo sa pagiging corny, panalo ka na naman ngayon. 💯 🤪",
+  "Lodi, subukan mo kayang mag-unseat muna sa chat box? Nakaka-distract ka. 💯 🤪",
+  "Kung nakakamatay lang ang pagiging epal, matagal ka nang wala rito. 💯 🤪",
+  "Ano 'yan, joke o confession of stupidity? Pabasa naman ng guide. 💯 🤪",
+  "Hindi ka ba napapagod na maging tampulan ng tawanan araw-araw? 💯 🤪",
+  "Bro, stop cooking... you're burning the whole kitchen down. 💀 💯 🤪",
+  "Ang hangin mo masyado, wala ka namang maipakitang resibo. 💯 🤪",
+  "Gusto ko sana kitang barahin kaso baka maiyak ka pa. 💯 🤪",
+  "Sayang naman yung pinaload mo, ginamit mo lang sa katangahan. 💯 🤪",
+  "Sana maging kasing linaw ng paningin mo yung kalokohang pinagsasabi mo. 💯 🤪",
+  "Huwag ka nang mag-salita pre, nababawasan IQ ng buong group chat. 💯 🤪",
+  "Kahit sinong admin dito, gustong-gusto ka nang i-remove kaso naaawa lang. 🤡 💯 🤪",
+  "Lakas mag-attitude, kasing babaw naman ng plato 'yang dahilan mo. 💯 🤪"
 ];
 
 // Anti-Spam Memory Maps & Cooldowns
@@ -207,6 +222,7 @@ module.exports.run = async function ({ api, event, args }) {
 
     return api.sendMessage(
       `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
+      `• Permission Level: 2 (Bot Owner Only)\n` +
       `• Mode: Infinite / Permanent (Walang Hinto)\n` +
       `• Anti-Spam: ENABLED\n` +
       `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
@@ -274,6 +290,7 @@ module.exports.run = async function ({ api, event, args }) {
       `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
       `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
       `🛡️ Anti-Spam: Active\n` +
+      `🔒 Permission Required: Level 2\n` +
       `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
       threadID,
@@ -282,7 +299,7 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   return api.sendMessage(
-    `Usage (Admin Only):\n` +
+    `Usage (Admin Only - Perm 2):\n` +
     `/Gojo on — Start Infinite Auto-Roast\n` +
     `/Gojo off — Stop Auto-Roast\n` +
     `/Gojo setgname <name> — Lock GC Name (Default: Ryuk)\n` +
