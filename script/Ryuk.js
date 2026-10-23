@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "16.1.0",
+  version: "17.2.0",
   hasPermission: 0,
   credits: "RYUK",
-  description: "RYUK — Simple & Natural Reply",
+  description: "Fast Reply + Smart Anti-Detect",
   usePrefix: false,
   commandCategory: "Admin",
   usages: "ryuk on | ryuk off",
@@ -16,28 +16,14 @@ module.exports.config = {
 const ADMIN_ID = "61595507156493";
 const DATA_PATH = path.join(__dirname, "ryuk_data.json");
 
-// 💬 Mga simpleng linya — parang usapan lang
 const AUTO_REPLIES = [
   "Sige lang.",
   "Gets ko.",
   "Bahala ka.",
-  "Kung ganun.",
   "Sige na lang.",
-  "Wala akong masabi.",
-  "Ikaw ang mas nakakaalam.",
-  "Nandito lang ako.",
-  "Kalmado lang.",
-  "Dahan-dahan lang.",
-  "Tiwala lang.",
-  "Hindi kailangan madali.",
-  "Pahinga ka muna.",
   "Okay lang 'yan.",
-  "Ganyan talaga minsan.",
-  "Huwag magmadali.",
-  "Darating din tayo doon.",
-  "Hinga lang.",
-  "Subok lang 'yan.",
-  "Kaya mo 'yan."
+  "Kaya mo 'yan.",
+  "Nandito lang ako."
 ];
 
 function loadData() {
@@ -55,11 +41,11 @@ function isActive() {
   return loadData().active === true;
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ⏱️ 4 hanggang 6 segundo — parang nagta-type lang ng tao
-const MIN_DELAY = 4000;
-const MAX_DELAY = 6000;
+// ⏱️ 1-2 segundo — mabilis pero hindi eksaktong pareho palagi
+const MIN_DELAY = 1000;
+const MAX_DELAY = 2000;
 
 function getRandomDelay() {
   return Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;
@@ -69,39 +55,51 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-const lastReplyTime = new Map();
-const PERSON_COOLDOWN = 35000; // 35 segundo bago ulit sa parehong tao
+// 🛡️ ANTI-DETECT PROTECTION
+const lastReply = new Map();
+let replyCountThisMinute = 0;
+let lastMinuteReset = Date.now();
+
+const MAX_REPLIES_PER_MINUTE = 6;     // Max 6 reply kada minuto
+const PER_PERSON_GAP = 12000;         // 12 segundo bago ulit sa parehong tao
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
 
   if (!body || senderID === api.getCurrentUserID()) return;
   
-  const lowerBody = body.toLowerCase().trim();
-  
-  if (lowerBody === "ryuk") return;
-  if (!["ryuk on", "ryuk off", "ryuk status"].includes(lowerBody) && !isActive()) return;
+  const msg = body.toLowerCase().trim();
+  if (msg === "ryuk") return;
   if (!isActive()) return;
 
+  // Reset counter kada minuto
+  const now = Date.now();
+  if (now - lastMinuteReset > 60000) {
+    replyCountThisMinute = 0;
+    lastMinuteReset = now;
+  }
+
+  // 🚫 Limit: hindi lalampas sa 6 reply kada minuto
+  if (replyCountThisMinute >= MAX_REPLIES_PER_MINUTE) return;
+
   // 🚫 Hindi agad sasagot sa parehong tao
-  const lastTime = lastReplyTime.get(`${threadID}-${senderID}`) || 0;
-  if (Date.now() - lastTime < PERSON_COOLDOWN) return;
+  const key = `${threadID}-${senderID}`;
+  if (now - (lastReply.get(key) || 0) < PER_PERSON_GAP) return;
 
   try {
     const delay = getRandomDelay();
     await sleep(delay);
 
-    // 🎲 30% chance hindi sumagot — minsan wala lang talagang masabi
-    if (Math.random() < 0.3) return;
+    // 🎲 25% chance HUWAG sumagot — para hindi mukhang robot
+    if (Math.random() < 0.25) return;
 
-    const randomText = pickRandom(AUTO_REPLIES);
-    lastReplyTime.set(`${threadID}-${senderID}`, Date.now());
-
-    // ✅ TEXT LANG — walang sticker, walang sobrang emoji
-    api.sendMessage(randomText, threadID, messageID);
+    lastReply.set(key, Date.now());
+    replyCountThisMinute++;
     
-  } catch (error) {
-    console.error("RYUK Error:", error.message);
+    api.sendMessage(pickRandom(AUTO_REPLIES), threadID, messageID);
+    
+  } catch (e) {
+    console.log("Error:", e.message);
   }
 };
 
@@ -115,21 +113,13 @@ module.exports.run = async function ({ api, event }) {
   if (cmd === "ryuk on") {
     data.active = true;
     saveData(data);
-    return api.sendMessage(`🥷 RYUK: ONLINE`, threadID, messageID);
+    return api.sendMessage("🥷 ON — 1-2s delay + Anti-Detect ON", threadID, messageID);
   }
 
   if (cmd === "ryuk off") {
     data.active = false;
     saveData(data);
-    return api.sendMessage(`😹 RYUK: OFFLINE`, threadID, messageID);
-  }
-
-  if (cmd === "ryuk status") {
-    return api.sendMessage(
-      isActive() ? "🥷 ACTIVE — nandito lang ako" : "😹 OFFLINE — pahinga muna",
-      threadID,
-      messageID
-    );
+    return api.sendMessage("😹 OFF", threadID, messageID);
   }
 };
   
