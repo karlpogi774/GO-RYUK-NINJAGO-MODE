@@ -3,29 +3,29 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "15.3.0",
+  version: "15.4.0",
   hasPermission: 0,
   credits: "RYUK",
-  description: "RYUK Bot • Sticker + Emoji + Text Reply",
+  description: "RYUK Bot • Text + Emoji + Sticker",
   usePrefix: false,
   commandCategory: "Admin",
   usages: "ryuk on | ryuk off | ryuk status",
   cooldowns: 0
 };
 
-// ADMIN ID RESTRICTION
+// 🔑 ADMIN ID MO
 const ADMIN_ID = "61595507156493";
 
 const DATA_PATH = path.join(__dirname, "ryuk_data.json");
 
-// 🎯 RANDOM EMOJIS
+// 😊 RANDOM EMOJIS
 const EMOJIS = [
   "😏", "🗿", "💀", "🔥", "👁️", "😹", "🤣", "😆",
   "✨", "⚡", "🌙", "🖤", "🕊️", "🦋", "🌑", "😤",
   "🤫", "😌", "👀", "💅", "🤔", "😎", "🤐", "👻"
 ];
 
-// 🎯 RANDOM STICKERS (mga sikat na sticker IDs)
+// 🖼️ STICKERS
 const STICKERS = [
   "1526943907554201",
   "1526943897554202",
@@ -41,15 +41,10 @@ const STICKERS = [
   "1526943910887535",
   "1526943880887537",
   "1526943917554200",
-  "1526943930887533",
-  "1526943894220869",
-  "1526943924220867",
-  "1526943904220868",
-  "1526943887554203",
-  "1526943937554200"
+  "1526943930887533"
 ];
 
-// 🎯 MAIKLI AT MARAMING LINYA
+// 💬 AUTO-REPLY LINES
 const AUTO_REPLIES = [
   "Sige lang.",
   "Gets ko.",
@@ -98,11 +93,8 @@ function isActive() {
   return loadData().active === true;
 }
 
-// ==========================================
-// ⚡ 1-2 SECOND DELAY • TEXT + EMOJI + STICKER
-// ==========================================
+// ⏱️ DELAY: 1-2 segundo
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const MIN_DELAY = 1000;
 const MAX_DELAY = 2000;
 
@@ -114,7 +106,7 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// ===== EVENT HANDLER =====
+// 📥 HANDLE MESSAGES
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
 
@@ -122,9 +114,10 @@ module.exports.handleEvent = async function ({ api, event }) {
   
   const lowerBody = body.toLowerCase().trim();
   
-  // ❌ Huwag mag-reply sa "ryuk" lang
+  // Huwag sagutin kung "ryuk" lang
   if (lowerBody === "ryuk") return;
   
+  // Kung hindi active at hindi command — huwag sagot
   if (!["ryuk on", "ryuk off", "ryuk status"].includes(lowerBody) && !isActive()) return;
   
   if (!isActive()) return;
@@ -133,27 +126,20 @@ module.exports.handleEvent = async function ({ api, event }) {
     const delay = getRandomDelay();
     await sleep(delay);
 
-    // Random lahat
     const randomText = pickRandom(AUTO_REPLIES);
     const randomEmoji = pickRandom(EMOJIS);
     const randomSticker = pickRandom(STICKERS);
     
-    // Ipagcombine ang text + emoji
-    const finalText = `${randomText} ${randomEmoji}`;
-    
-    // 50% chance mag-mention
     const shouldMention = Math.random() > 0.5;
     
-    // 📤 Ipadala: TEXT + STICKER sabay
     api.sendMessage({
       body: shouldMention 
         ? `${randomEmoji} @${senderID} — ${randomText}`
-        : finalText,
+        : `${randomText} ${randomEmoji}`,
       mentions: shouldMention ? [{ tag: `@${senderID}`, id: senderID }] : undefined,
       sticker: randomSticker
     }, threadID, async (err, info) => {
       if (!err && info?.messageID) {
-        // 40% chance mag-react pa rin
         if (Math.random() > 0.6) {
           await sleep(Math.floor(Math.random() * 500) + 200);
           api.setMessageReaction(pickRandom(EMOJIS), info.messageID, () => {}, true);
@@ -166,20 +152,20 @@ module.exports.handleEvent = async function ({ api, event }) {
   }
 };
 
-// ===== COMMAND HANDLER =====
+// ⌨️ COMMANDS
 module.exports.run = async function ({ api, event }) {
   const { threadID, messageID, senderID, body } = event;
   const cmd = body.toLowerCase().trim();
   const data = loadData();
 
-  // ❌ Kung hindi Admin — dedma lang
+  // Hindi admin = dedma lang
   if (senderID !== ADMIN_ID) return;
 
   if (cmd === "ryuk on") {
     data.active = true;
     saveData(data);
     api.setMessageReaction("🥷", messageID, () => {}, true);
-    return api.sendMessage(`🥷 RYUK: ONLINE\n\n✅ Sticker + Emoji + Text Mode ACTIVE`, threadID, messageID);
+    return api.sendMessage(`🥷 RYUK: ONLINE\n\n✅ Text + Emoji + Sticker`, threadID, messageID);
   }
 
   if (cmd === "ryuk off") {
@@ -191,9 +177,7 @@ module.exports.run = async function ({ api, event }) {
 
   if (cmd === "ryuk status") {
     return api.sendMessage(
-      isActive() 
-        ? "🥷 RYUK: ACTIVE — Text + Emoji + Sticker ✅"
-        : "😹 RYUK: OFFLINE",
+      isActive() ? "🥷 RYUK: ACTIVE ✅" : "😹 RYUK: OFFLINE",
       threadID,
       messageID
     );
