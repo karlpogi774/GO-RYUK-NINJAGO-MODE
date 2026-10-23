@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "15.2.0",
+  version: "15.3.0",
   hasPermission: 0,
   credits: "RYUK",
-  description: "RYUK Bot • No Cooldown • Auto-Reply Only",
+  description: "RYUK Bot • Sticker + Emoji + Text Reply",
   usePrefix: false,
   commandCategory: "Admin",
   usages: "ryuk on | ryuk off | ryuk status",
@@ -18,8 +18,38 @@ const ADMIN_ID = "61595507156493";
 
 const DATA_PATH = path.join(__dirname, "ryuk_data.json");
 
-const REACT_EMOJIS = ["😏", "🗿", "💀"];
+// 🎯 RANDOM EMOJIS
+const EMOJIS = [
+  "😏", "🗿", "💀", "🔥", "👁️", "😹", "🤣", "😆",
+  "✨", "⚡", "🌙", "🖤", "🕊️", "🦋", "🌑", "😤",
+  "🤫", "😌", "👀", "💅", "🤔", "😎", "🤐", "👻"
+];
 
+// 🎯 RANDOM STICKERS (mga sikat na sticker IDs)
+const STICKERS = [
+  "1526943907554201",
+  "1526943897554202",
+  "1526943914220867",
+  "1526943884220870",
+  "1526943920887533",
+  "1526943890887536",
+  "1526943900887534",
+  "1526943927554200",
+  "1526943877554204",
+  "1526943934220866",
+  "1526943940887532",
+  "1526943910887535",
+  "1526943880887537",
+  "1526943917554200",
+  "1526943930887533",
+  "1526943894220869",
+  "1526943924220867",
+  "1526943904220868",
+  "1526943887554203",
+  "1526943937554200"
+];
+
+// 🎯 MAIKLI AT MARAMING LINYA
 const AUTO_REPLIES = [
   "Sige lang.",
   "Gets ko.",
@@ -40,7 +70,17 @@ const AUTO_REPLIES = [
   "Darating din tayo doon.",
   "Hinga lang ng malalim.",
   "Subok lang 'yan.",
-  "Kaya mo 'yan."
+  "Kaya mo 'yan.",
+  "Meron akong sasabihin...",
+  "Tara lang.",
+  "Hindi lahat kailangan sagot.",
+  "Tandaan mo 'to.",
+  "Ikaw ang may kontrol.",
+  "Magtiwala ka sa sarili mo.",
+  "Hinga, tapos tuloy lang.",
+  "Kaya mo 'yan palagi.",
+  "Andito lang ako kung kailangan mo.",
+  "Hindi ka nag-iisa."
 ];
 
 function loadData() {
@@ -59,7 +99,7 @@ function isActive() {
 }
 
 // ==========================================
-// ⚡ 1-2 SECOND DELAY • WALANG COOLDOWN
+// ⚡ 1-2 SECOND DELAY • TEXT + EMOJI + STICKER
 // ==========================================
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -70,6 +110,10 @@ function getRandomDelay() {
   return Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;
 }
 
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
@@ -78,7 +122,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   
   const lowerBody = body.toLowerCase().trim();
   
-  // ❌ Huwag mag-reply sa paulit-ulit na "ryuk" — dedma lang
+  // ❌ Huwag mag-reply sa "ryuk" lang
   if (lowerBody === "ryuk") return;
   
   if (!["ryuk on", "ryuk off", "ryuk status"].includes(lowerBody) && !isActive()) return;
@@ -89,24 +133,34 @@ module.exports.handleEvent = async function ({ api, event }) {
     const delay = getRandomDelay();
     await sleep(delay);
 
-    // 10% chance sumagot — walang skip
-    const randomReply = AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)];
-    const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
-
-    const shouldMention = Math.random() > 0.4;
-    const msgBody = shouldMention 
-      ? { body: randomReply, mentions: [{ tag: `@${senderID}`, id: senderID }] }
-      : { body: randomReply };
-
-    api.sendMessage(msgBody, threadID, async (err, info) => {
+    // Random lahat
+    const randomText = pickRandom(AUTO_REPLIES);
+    const randomEmoji = pickRandom(EMOJIS);
+    const randomSticker = pickRandom(STICKERS);
+    
+    // Ipagcombine ang text + emoji
+    const finalText = `${randomText} ${randomEmoji}`;
+    
+    // 50% chance mag-mention
+    const shouldMention = Math.random() > 0.5;
+    
+    // 📤 Ipadala: TEXT + STICKER sabay
+    api.sendMessage({
+      body: shouldMention 
+        ? `${randomEmoji} @${senderID} — ${randomText}`
+        : finalText,
+      mentions: shouldMention ? [{ tag: `@${senderID}`, id: senderID }] : undefined,
+      sticker: randomSticker
+    }, threadID, async (err, info) => {
       if (!err && info?.messageID) {
-        // 50% chance mag-react
-        if (Math.random() > 0.5) {
-          await sleep(Math.floor(Math.random() * 600) + 300);
-          api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
+        // 40% chance mag-react pa rin
+        if (Math.random() > 0.6) {
+          await sleep(Math.floor(Math.random() * 500) + 200);
+          api.setMessageReaction(pickRandom(EMOJIS), info.messageID, () => {}, true);
         }
       }
     }, messageID);
+    
   } catch (error) {
     console.error("RYUK Error:", error.message);
   }
@@ -125,7 +179,7 @@ module.exports.run = async function ({ api, event }) {
     data.active = true;
     saveData(data);
     api.setMessageReaction("🥷", messageID, () => {}, true);
-    return api.sendMessage(`🥷 RYUK: ONLINE`, threadID, messageID);
+    return api.sendMessage(`🥷 RYUK: ONLINE\n\n✅ Sticker + Emoji + Text Mode ACTIVE`, threadID, messageID);
   }
 
   if (cmd === "ryuk off") {
@@ -137,9 +191,12 @@ module.exports.run = async function ({ api, event }) {
 
   if (cmd === "ryuk status") {
     return api.sendMessage(
-      isActive() ? "🥷 RYUK: ACTIVE" : "😹 RYUK: OFFLINE",
+      isActive() 
+        ? "🥷 RYUK: ACTIVE — Text + Emoji + Sticker ✅"
+        : "😹 RYUK: OFFLINE",
       threadID,
       messageID
     );
   }
 };
+  
