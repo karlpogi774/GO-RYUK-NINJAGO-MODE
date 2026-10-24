@@ -2,19 +2,18 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports.config = {
-  name: "Ryuk",
+  name: "ryuk", // ✅ Maliit na letter na
   version: "3.9.0",
-  hasPermission: 0, // Set to 0 so internal multi-admin check handles permission
-  credits: "sinzu & Gemini",
-  description: "Infinite global auto-roast with Typing Indicator, Multi-Admin Locks, Anti-Spam, Render fix, 2s setnick delay, Auto React, and Name Guard.",
+  hasPermission: 2,
+  credits: "sinzu & Gemini + Dola",
+  description: "Infinite global auto-roast with Typing Indicator, Self-React, Multi-Admin Locks, Anti-Spam, Render fix, Name Guard.",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/Ryuk on | off | status | setgname <name> | setnick <name>",
+  usages: "/ryuk on | off | status | setgname <name> | setnick <name>", // ✅ Maliit na /ryuk
   cooldowns: 2
 };
 
 // ================= CONFIGURATION =================
-// LISTAHAN NG MGA ADMIN UIDs (APAT NA AUTHORIZED ACCOUNTS)
 const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
@@ -22,12 +21,11 @@ const ADMIN_UIDS = [
   "61595398037273"
 ];
 
-const DEFAULT_LOCKED_NAME = "Ryuk";
+const DEFAULT_LOCKED_NAME = "ryuk"; // ✅ Maliit na letter
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
 const EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "💩", "👻", "🐶", "💯", "🤪"];
 
-// Massive List of Roast Lines
 const ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
   "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣 💯 🤪",
@@ -104,8 +102,8 @@ const ROASTS = [
 // Anti-Spam Memory Maps & Cooldowns
 const userLastMsgTime = new Map();
 const threadLastReplyTime = new Map();
-const SPAM_USER_LIMIT = 2500; // 2.5s cooldown per user
-const COOLDOWN_DELAY = 2000;    // 2s delay between auto-replies
+const SPAM_USER_LIMIT = 2500;
+const COOLDOWN_DELAY = 2000;
 
 let localMemoryData = { active: false, activatedBy: null, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
 
@@ -171,21 +169,25 @@ module.exports.handleEvent = async function ({ api, event }) {
     const newNick = logMessageData ? logMessageData.nickname : "";
 
     if (changedUser && newNick !== currentLockedNick) {
-      await sleep(1000);
-      api.changeNickname(currentLockedNick, threadID, changedUser, () => {});
+      await sleep(1500);
+      api.changeNickname(currentLockedNick, threadID, changedUser, (err) => {
+        if (err) console.log("[Nick Lock Skipped]:", err.message);
+      });
     }
     return;
   }
 
   if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
 
-  // ALWAYS AUTO-REACT TO EVERY MESSAGE
+  // AUTO-REACT to user's message
   try {
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-    api.setMessageReaction(randomEmoji, messageID, () => {}, true);
+    api.setMessageReaction(randomEmoji, messageID, (err) => {
+      if (err) console.log("[React Skipped]:", err.message);
+    }, true);
   } catch (e) {}
 
-  // 3. ANTI-SPAM & RATE LIMIT CHECK FOR TEXT REPLIES
+  // ANTI-SPAM CHECK
   const now = Date.now();
   const lastUserTime = userLastMsgTime.get(senderID) || 0;
   const lastThreadTime = threadLastReplyTime.get(threadID) || 0;
@@ -196,74 +198,82 @@ module.exports.handleEvent = async function ({ api, event }) {
   userLastMsgTime.set(senderID, now);
   threadLastReplyTime.set(threadID, now);
 
-  // 4. AUTO REPLY ROAST WITH TYPING INDICATOR
+  // ✅ FIXED TYPING INDICATOR + SELF-REACT
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-  
-  try {
-    api.sendTypingIndicator(threadID, () => {});
-  } catch (e) {}
 
-  await sleep(1500); // Wait 1.5 seconds while typing bubble is active
+  api.sendTypingIndicator(threadID); // Ipakita muna ang "typing..."
+  await sleep(1500); // Maghintay habang nakita ang typing
 
   api.sendMessage({
     body: randomRoast,
     mentions: [{ tag: `@${senderID}`, id: senderID }]
-  }, threadID, messageID);
+  }, threadID, async (err, info) => {
+    if (err) return console.log("[Send Error]:", err.message);
+
+    // ✅ SELF-REACT — Bot reacts to its own message
+    if (info && info.messageID) {
+      await sleep(600); // Maghintay sandali bago mag-react
+      try {
+        const selfEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+        api.setMessageReaction(selfEmoji, info.messageID, (reactErr) => {
+          if (reactErr) console.log("[Self-React Skipped]:", reactErr.message);
+        }, true);
+      } catch (e) {
+        console.log("[Self-React Fail]:", e.message);
+      }
+    }
+  });
 };
 
 // ===== COMMAND HANDLER =====
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
 
-  const sub = (args[0] || "").toLowerCase();
-  const data = loadData();
-
   if (!checkIsAdmin(senderID)) {
     const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-    try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+    api.sendTypingIndicator(threadID);
     await sleep(1200);
     return api.sendMessage(randomRoast, threadID, messageID);
   }
 
-  // /Ryuk on
+  const sub = (args[0] || "").toLowerCase();
+  const data = loadData();
+
+  // /ryuk on
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
     data.activatedAt = Date.now();
     saveData(data);
 
-    try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+    api.sendTypingIndicator(threadID);
     await sleep(1000);
-
     return api.sendMessage(
-      `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
-      `• Typing Indicator: ENABLED ✍️\n` +
-      `• Mode: Infinite / Permanent (Walang Hinto)\n` +
-      `• Anti-Spam: ENABLED\n` +
-      `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
-      `• Auto-Reply Cooldown: 2 Seconds\n` +
-      `• Setnick Delay: 2 Seconds/User\n\n` +
-      `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
-      `Gamitin ang "/Ryuk off" kapag gustong ihinto.`,
-      threadID,
-      messageID
+      `🔥 GLOBAL AUTO-ROAST: ACTIVATED\n\n` +
+      `✍️ Typing Indicator: ENABLED\n` +
+      `✨ Self-React: ENABLED\n` +
+      `🛡️ Anti-Spam: ENABLED\n` +
+      `🔒 Permission Required: Level 2\n` +
+      `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n\n` +
+      `/ryuk off — to stop`,
+      threadID, messageID
     );
   }
 
-  // /Ryuk off
+  // /ryuk off
   if (sub === "off") {
     if (isActive()) {
       data.active = false;
       saveData(data);
-      try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+      api.sendTypingIndicator(threadID);
       await sleep(1000);
-      return api.sendMessage("✅ Infinite Auto-Roast turned OFF.", threadID, messageID);
+      return api.sendMessage("✅ Auto-Roast turned OFF.", threadID, messageID);
     }
     return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
   }
 
-  // /Ryuk setgname <name>
+  // /ryuk setgname <name>
   if (sub === "setgname") {
     const newGName = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedGName = newGName;
@@ -271,12 +281,12 @@ module.exports.run = async function ({ api, event, args }) {
 
     api.setTitle(newGName, threadID, (err) => {
       if (err) return api.sendMessage("❌ Failed to change GC Name.", threadID, messageID);
-      return api.sendMessage(`🔒 GC Name locked and updated to: "${newGName}"`, threadID, messageID);
+      return api.sendMessage(`🔒 GC Name locked to: "${newGName}"`, threadID, messageID);
     });
     return;
   }
 
-  // /Ryuk setnick <name>
+  // /ryuk setnick <name>
   if (sub === "setnick") {
     const newNick = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedNick = newNick;
@@ -286,47 +296,47 @@ module.exports.run = async function ({ api, event, args }) {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
 
-      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (2s delay per user)...`, threadID);
+      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (3s delay each)...`, threadID);
 
+      // Mas matagal na delay para hindi ma-rate limit
       for (const uid of participantIDs) {
-        await sleep(2000);
-        await new Promise((resolve) => {
-          api.changeNickname(newNick, threadID, uid, () => resolve());
+        await sleep(3000);
+        api.changeNickname(newNick, threadID, uid, (err) => {
+          if (err) console.log(`[Nick Skip ${uid}]:`, err.message);
         });
       }
-      return api.sendMessage(`🔒 All nicknames locked to: "${newNick}"`, threadID, messageID);
+      return api.sendMessage(`🔒 All nicknames locked to: "${newNick}" ✅`, threadID, messageID);
     } catch (e) {
       return api.sendMessage("❌ Failed to set nicknames. Make sure bot is GC Admin!", threadID, messageID);
     }
   }
 
-  // /Ryuk status
+  // /ryuk status
   if (sub === "status") {
     if (!isActive()) {
       return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
     }
-    try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+    api.sendTypingIndicator(threadID);
     await sleep(1000);
     return api.sendMessage(
-      `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
-      `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
-      `✍️ Typing Indicator: Active\n` +
-      `🛡️ Anti-Spam: Active\n` +
-      `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
-      threadID,
-      messageID
+      `🔥 Auto-Roast is ACTIVE\n\n` +
+      `✍️ Typing Indicator: ON\n` +
+      `✨ Self-React: ON\n` +
+      `🛡️ Anti-Spam: ON\n` +
+      `📌 GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `📌 Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
+      threadID, messageID
     );
   }
 
   return api.sendMessage(
-    `Usage (Admin Only):\n` +
-    `/Ryuk on — Start Infinite Auto-Roast\n` +
-    `/Ryuk off — Stop Auto-Roast\n` +
-    `/Ryuk setgname <name> — Lock GC Name (Default: Ryuk)\n` +
-    `/Ryuk setnick <name> — Lock All Nicknames (Default: Ryuk)\n` +
-    `/Ryuk status — Check status`,
-    threadID,
-    messageID
+    `Usage:\n` +
+    `/ryuk on — Start\n` +
+    `/ryuk off — Stop\n` +
+    `/ryuk setgname <name> — Lock GC Name\n` +
+    `/ryuk setnick <name> — Lock All Nicknames\n` +
+    `/ryuk status — Check status`,
+    threadID, messageID
   );
 };
+  
