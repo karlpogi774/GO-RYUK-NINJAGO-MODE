@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "5.0.0",
+  version: "5.1.0",
   hasPermission: 0,
   credits: "sinzu & Gemini",
-  description: "100% Safe & Anti-Detection Infinite Global Auto-Roast with Multi-Admin Locks and Natural Humanized Delay.",
+  description: "Anti-Detection Infinite Auto-Roast with 5s delay, fixed 😆 auto-react, and Multi-Admin Locks.",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
@@ -23,7 +23,7 @@ const ADMIN_UIDS = [
 
 const DEFAULT_LOCKED_NAME = "Ryuk";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
-const EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "💩", "👻", "🐶", "💯", "🤪"];
+const FIXED_EMOJI = "😆"; // FIXED AUTO-REACT EMOJI
 
 const ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
@@ -71,9 +71,9 @@ const ROASTS = [
 const userLastMsgTime = new Map();
 const threadLastReplyTime = new Map();
 
-// ANTI-DETECTION COOLDOWNS (Sapat na oras para hindi ma-flag)
-const SPAM_USER_LIMIT = 3500; // 3.5 seconds per user
-const COOLDOWN_DELAY = 3000;   // 3 seconds per thread
+// 5 SECONDS SAFE TIMINGS
+const SPAM_USER_LIMIT = 5000; 
+const COOLDOWN_DELAY = 5000;   
 
 let memoryState = { active: false, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
 
@@ -99,11 +99,10 @@ function checkIsAdmin(senderID) {
   return ADMIN_UIDS.includes(String(senderID));
 }
 
-// HUMANLIKE SAFE MESSAGE SENDER
-async function sendHumanizedMessage(api, threadID, msgObj, replyToID = null) {
-  // Random delay (1.8s - 3.0s) simulating typing time
-  const delay = Math.floor(Math.random() * 1200) + 1800;
-  await sleep(delay);
+// 5 SECONDS DELAY SENDER
+async function sendDelayedMessage(api, threadID, msgObj, replyToID = null) {
+  // Safe 5 Seconds Delay
+  await sleep(5000);
 
   return new Promise((resolve) => {
     if (replyToID) {
@@ -136,7 +135,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (logMessageType === "log:user-nickname") {
     const changedUser = logMessageData ? logMessageData.participant_id : null;
     if (changedUser && logMessageData.nickname !== currentLockedNick) {
-      await sleep(1500);
+      await sleep(2000);
       api.changeNickname(currentLockedNick, threadID, changedUser, () => {});
     }
     return;
@@ -144,13 +143,12 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
 
-  // SAFE AUTO-REACT
+  // FIXED AUTO-REACT WITH 😆
   try {
-    const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-    api.setMessageReaction(randomEmoji, messageID, () => {}, true);
+    api.setMessageReaction(FIXED_EMOJI, messageID, () => {}, true);
   } catch (e) {}
 
-  // 3. RATE LIMIT CHECK
+  // 3. 5 SECONDS RATE LIMIT CHECK
   const now = Date.now();
   if (now - (userLastMsgTime.get(senderID) || 0) < SPAM_USER_LIMIT || now - (threadLastReplyTime.get(threadID) || 0) < COOLDOWN_DELAY) {
     return;
@@ -158,9 +156,9 @@ module.exports.handleEvent = async function ({ api, event }) {
   userLastMsgTime.set(senderID, now);
   threadLastReplyTime.set(threadID, now);
 
-  // 4. AUTO-REPLY ROAST WITH SAFE DELAY
+  // 4. AUTO-REPLY ROAST WITH 5s DELAY
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-  await sendHumanizedMessage(api, threadID, { body: randomRoast, mentions: [{ tag: `@${senderID}`, id: senderID }] }, messageID);
+  await sendDelayedMessage(api, threadID, { body: randomRoast, mentions: [{ tag: `@${senderID}`, id: senderID }] }, messageID);
 };
 
 // ===== COMMAND HANDLER =====
@@ -171,20 +169,20 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!checkIsAdmin(senderID)) {
     const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-    return await sendHumanizedMessage(api, threadID, randomRoast, messageID);
+    return await sendDelayedMessage(api, threadID, randomRoast, messageID);
   }
 
   if (sub === "on") {
     data.active = true;
     saveData(data);
-    return await sendHumanizedMessage(
+    return await sendDelayedMessage(
       api, threadID,
       `🔥 GLOBAL AUTO-ROAST & PROTECTION: ACTIVATED\n\n` +
-      `• Mode: Anti-Detection Active 🛡️\n` +
-      `• Delay Strategy: Natural Human Delay (1.8s - 3.0s)\n` +
+      `• Mode: Safe Anti-Detection Mode 🛡️\n` +
+      `• Reply Delay: Fixed 5 Seconds ⏱️\n` +
+      `• Auto-React: Fixed 😆\n` +
       `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n\n` +
-      `GUMAGANA ITO NANG STABLE AT LIGTAS SA BOT DETECTION!\n` +
       `Gamitin ang "/ryuk off" kapag gustong ihinto.`,
       messageID
     );
@@ -193,13 +191,14 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "off") {
     data.active = false;
     saveData(data);
-    return await sendHumanizedMessage(api, threadID, "✅ Infinite Auto-Roast turned OFF.", messageID);
+    return await sendDelayedMessage(api, threadID, "✅ Infinite Auto-Roast turned OFF.", messageID);
   }
 
   if (sub === "status") {
-    return await sendHumanizedMessage(
+    return await sendDelayedMessage(
       api, threadID,
-      `🔥 Status: ${data.active ? "ACTIVE (STABLE MODE)" : "OFF"}\n` +
+      `🔥 Status: ${data.active ? "ACTIVE (SAFE 5s DELAY)" : "OFF"}\n` +
+      `📌 Reaction: 😆\n` +
       `📌 Locked Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
       messageID
@@ -211,7 +210,7 @@ module.exports.run = async function ({ api, event, args }) {
     data.lockedGName = newGName;
     saveData(data);
     api.setTitle(newGName, threadID, () => {});
-    return await sendHumanizedMessage(api, threadID, `🔒 GC Name locked and updated to: "${newGName}"`, messageID);
+    return await sendDelayedMessage(api, threadID, `🔒 GC Name locked and updated to: "${newGName}"`, messageID);
   }
 
   if (sub === "setnick") {
@@ -223,17 +222,17 @@ module.exports.run = async function ({ api, event, args }) {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
 
-      await sendHumanizedMessage(api, threadID, `⏳ Locking all nicknames to: "${newNick}" (2.5s safe delay)...`, messageID);
+      await sendDelayedMessage(api, threadID, `⏳ Locking all nicknames to: "${newNick}" (3s delay per user)...`, messageID);
 
       for (const uid of participantIDs) {
-        await sleep(2500);
+        await sleep(3000);
         api.changeNickname(newNick, threadID, uid, () => {});
       }
-      return await sendHumanizedMessage(api, threadID, `🔒 All nicknames locked to: "${newNick}"`, messageID);
+      return await sendDelayedMessage(api, threadID, `🔒 All nicknames locked to: "${newNick}"`, messageID);
     } catch (e) {
-      return await sendHumanizedMessage(api, threadID, "❌ Failed to set nicknames. Make sure bot is GC Admin!", messageID);
+      return await sendDelayedMessage(api, threadID, "❌ Failed to set nicknames. Make sure bot is GC Admin!", messageID);
     }
   }
 
-  return await sendHumanizedMessage(api, threadID, "Usage: /ryuk on | off | status | setgname <name> | setnick <name>", messageID);
+  return await sendDelayedMessage(api, threadID, "Usage: /ryuk on | off | status | setgname <name> | setnick <name>", messageID);
 };
