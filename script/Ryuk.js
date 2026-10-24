@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "4.3.0",
-  hasPermission: 0,
+  version: "4.4.0",
+  hasPermission: 0, // Set 0 to avoid framework permission blockage
   credits: "sinzu & Gemini",
-  description: "Safe & Anti-Detection Infinite Global Auto-Roast with Multi-Admin Locks, Anti-Spam, and Safe Nickname Guard.",
+  description: "Infinite global auto-roast with Direct Typing Indicator, Multi-Admin Locks, Anti-Spam, 2s setnick delay, and Auto React.",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
@@ -71,9 +71,8 @@ const ROASTS = [
 const userLastMsgTime = new Map();
 const threadLastReplyTime = new Map();
 
-// ANTI-DETECTION TIMINGS
-const SPAM_USER_LIMIT = 3000; // 3 seconds per user to evade Facebook spam detection
-const COOLDOWN_DELAY = 2500;   // 2.5 seconds thread cooldown
+const SPAM_USER_LIMIT = 2500;
+const COOLDOWN_DELAY = 2000;
 
 let memoryState = { active: false, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
 
@@ -99,19 +98,21 @@ function checkIsAdmin(senderID) {
   return ADMIN_UIDS.includes(String(senderID));
 }
 
-// SAFE HUMANIZED REPLY (Prevents Bot Detection)
-async function sendHumanizedReply(api, threadID, msgObj, replyToID = null) {
-  // Random delay between 1.5s to 2.8s to look like human typing speed
-  const randomDelay = Math.floor(Math.random() * 1300) + 1500;
-  await sleep(randomDelay);
+// SAFE DIRECT TYPING INDICATOR EXECUTION
+function triggerTypingAndSend(api, threadID, msgObj, replyToID = null) {
+  // Trigger Typing Indicator
+  try {
+    api.sendTypingIndicator(threadID, (err) => {});
+  } catch (e) {}
 
-  return new Promise((resolve) => {
+  // Allow 2s for typing animation to stay active before sending
+  setTimeout(() => {
     if (replyToID) {
-      api.sendMessage(msgObj, threadID, resolve, replyToID);
+      api.sendMessage(msgObj, threadID, () => {}, replyToID);
     } else {
-      api.sendMessage(msgObj, threadID, resolve);
+      api.sendMessage(msgObj, threadID, () => {});
     }
-  });
+  }, 2000);
 }
 
 // ===== EVENT HANDLER =====
@@ -124,7 +125,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   const currentLockedGName = data.lockedGName || DEFAULT_LOCKED_NAME;
   const currentLockedNick = data.lockedNick || DEFAULT_LOCKED_NAME;
 
-  // 1. SAFE AUTO SETGNAME LOCK
+  // 1. AUTO SETGNAME LOCK
   if (logMessageType === "log:thread-name") {
     if (logMessageData && logMessageData.name !== currentLockedGName) {
       api.setTitle(currentLockedGName, threadID, () => {});
@@ -132,11 +133,11 @@ module.exports.handleEvent = async function ({ api, event }) {
     return;
   }
 
-  // 2. SAFE AUTO SETNICK LOCK
+  // 2. AUTO SETNICK LOCK
   if (logMessageType === "log:user-nickname") {
     const changedUser = logMessageData ? logMessageData.participant_id : null;
     if (changedUser && logMessageData.nickname !== currentLockedNick) {
-      await sleep(1500);
+      await sleep(1000);
       api.changeNickname(currentLockedNick, threadID, changedUser, () => {});
     }
     return;
@@ -144,13 +145,13 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
 
-  // AUTO-REACT (Safe Call)
+  // AUTO-REACT
   try {
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
     api.setMessageReaction(randomEmoji, messageID, () => {}, true);
   } catch (e) {}
 
-  // 3. RATE LIMIT & ANTI-DETECTION CHECK
+  // 3. RATE LIMIT CHECK
   const now = Date.now();
   if (now - (userLastMsgTime.get(senderID) || 0) < SPAM_USER_LIMIT || now - (threadLastReplyTime.get(threadID) || 0) < COOLDOWN_DELAY) {
     return;
@@ -158,9 +159,9 @@ module.exports.handleEvent = async function ({ api, event }) {
   userLastMsgTime.set(senderID, now);
   threadLastReplyTime.set(threadID, now);
 
-  // 4. AUTO-REPLY ROAST WITH SAFE DELAY
+  // 4. AUTO-REPLY WITH GUARANTEED TYPING
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-  await sendHumanizedReply(api, threadID, { body: randomRoast, mentions: [{ tag: `@${senderID}`, id: senderID }] }, messageID);
+  triggerTypingAndSend(api, threadID, { body: randomRoast, mentions: [{ tag: `@${senderID}`, id: senderID }] }, messageID);
 };
 
 // ===== COMMAND HANDLER =====
@@ -171,20 +172,19 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!checkIsAdmin(senderID)) {
     const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-    return await sendHumanizedReply(api, threadID, randomRoast, messageID);
+    return triggerTypingAndSend(api, threadID, randomRoast, messageID);
   }
 
   if (sub === "on") {
     data.active = true;
     saveData(data);
-    return await sendHumanizedReply(
+    return triggerTypingAndSend(
       api, threadID,
       `🔥 GLOBAL AUTO-ROAST & PROTECTION: ACTIVATED\n\n` +
-      `• Mode: Infinite / Anti-Detection Enabled 🛡️\n` +
-      `• Humanized Delay: Enabled\n` +
+      `• Typing Indicator: ENABLED ✍️\n` +
+      `• Mode: Infinite / Permanent\n` +
       `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n\n` +
-      `GUMAGANA ITO NANG WALANG HINTO AT SAFE SA DETECTION!\n` +
       `Gamitin ang "/ryuk off" kapag gustong ihinto.`,
       messageID
     );
@@ -193,13 +193,13 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "off") {
     data.active = false;
     saveData(data);
-    return await sendHumanizedReply(api, threadID, "✅ Infinite Auto-Roast turned OFF.", messageID);
+    return triggerTypingAndSend(api, threadID, "✅ Infinite Auto-Roast turned OFF.", messageID);
   }
 
   if (sub === "status") {
-    return await sendHumanizedReply(
+    return triggerTypingAndSend(
       api, threadID,
-      `🔥 Status: ${data.active ? "ACTIVE (ANTI-DETECTION MODE)" : "OFF"}\n` +
+      `🔥 Status: ${data.active ? "ACTIVE (INFINITY MODE)" : "OFF"}\n` +
       `📌 Locked Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
       messageID
@@ -211,7 +211,7 @@ module.exports.run = async function ({ api, event, args }) {
     data.lockedGName = newGName;
     saveData(data);
     api.setTitle(newGName, threadID, () => {});
-    return await sendHumanizedReply(api, threadID, `🔒 GC Name locked and updated to: "${newGName}"`, messageID);
+    return triggerTypingAndSend(api, threadID, `🔒 GC Name locked and updated to: "${newGName}"`, messageID);
   }
 
   if (sub === "setnick") {
@@ -223,19 +223,17 @@ module.exports.run = async function ({ api, event, args }) {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
 
-      await sendHumanizedReply(api, threadID, `⏳ Locking all nicknames to: "${newNick}" (2.5s safe delay)...`, messageID);
+      triggerTypingAndSend(api, threadID, `⏳ Locking all nicknames to: "${newNick}" (2s delay)...`, messageID);
 
       for (const uid of participantIDs) {
-        await sleep(2500); // 2.5s delay to prevent Facebook setnick blocks
-        await new Promise((resolve) => {
-          api.changeNickname(newNick, threadID, uid, () => resolve());
-        });
+        await sleep(2000);
+        api.changeNickname(newNick, threadID, uid, () => {});
       }
-      return await sendHumanizedReply(api, threadID, `🔒 All nicknames locked to: "${newNick}"`, messageID);
+      return triggerTypingAndSend(api, threadID, `🔒 All nicknames locked to: "${newNick}"`, messageID);
     } catch (e) {
-      return await sendHumanizedReply(api, threadID, "❌ Failed to set nicknames. Make sure bot is GC Admin!", messageID);
+      return triggerTypingAndSend(api, threadID, "❌ Failed to set nicknames. Make sure bot is GC Admin!", messageID);
     }
   }
 
-  return await sendHumanizedReply(api, threadID, "Usage: /ryuk on | off | status | setgname <name> | setnick <name>", messageID);
+  return triggerTypingAndSend(api, threadID, "Usage: /ryuk on | off | status | setgname <name> | setnick <name>", messageID);
 };
