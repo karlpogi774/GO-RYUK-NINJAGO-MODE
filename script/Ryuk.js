@@ -2,17 +2,19 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports.config = {
-  name: "ryuk",
-  version: "4.1.0",
-  hasPermission: 2,
-  credits: "sinzu & Gemini + Dola",
-  description: "Infinite auto-roast • Fixed Self-React • Stable Setnick • Name Guard",
+  name: "Ryuk",
+  version: "3.8.0",
+  hasPermission: 2, // Permission level 2 (Bot Owner / Admin)
+  credits: "sinzu & Gemini",
+  description: "Infinite global auto-roast with Typing Indicator, Multi-Admin Locks, Anti-Spam, Render fix, 2s setnick delay, Auto React, and Name Guard.",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
+  usages: "/Ryuk on | off | status | setgname <name> | setnick <name>",
   cooldowns: 2
 };
 
+// ================= CONFIGURATION =================
+// LISTAHAN NG MGA ADMIN UIDs
 const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
@@ -23,8 +25,9 @@ const ADMIN_UIDS = [
 const DEFAULT_LOCKED_NAME = "Ryuk";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-const EMOJIS = ["🥷", "🔥", "💀", "🗿", "😏", "🤌", "⚡", "👹"];
+const EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "💩", "👻", "🐶", "💯", "🤪"];
 
+// Massive List of Roast Lines
 const ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
   "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣 💯 🤪",
@@ -78,118 +81,31 @@ const ROASTS = [
   "Magkano bayad sa'yo para maging ganyan ka-epal araw-araw? 💯 🤪",
   "May pa-type type ka pa, burahin mo na lang 'yan pre. 💯 🤪",
   "Minsan na nga lang mag-chat, nakakairita pa. 💯 🤪",
-  "Grabe yung message, parang ginawa habang naglalakad nang nakapikit. 🚶‍♂️💀",
-  "Kung pag-iisip ang usapan, naka-offline ka pa rin hanggang ngayon. 📵",
-  "Hindi ko sasabihing wala kang utak… pero mas malinaw pa sa tubig ang ebidensya. 💧🤡",
-  "Ang gulo ng sinabi mo, parang nabasa ko habang nalilito pa rin ako. 🤯",
-  "Sayang lang yung data na nagamit mo para ipadala 'yan. 📉",
-  "Kahit ang pader mas nakakaintindi kaysa sa sinabi mo. 🧱💀",
-  "Huminga ka muna, baka masaktan ka pa sa sarili mong mga salita. 🌬️😌",
-  "Hindi porket pwede kang magsalita, kailangan mo nang gawin. 🤐",
-  "Parang luma at sira na ring telepono yung sinabi mo — hindi maintindihan. 📞❌",
-  "Isipin mo na lang na wala kang sinabi, mas okay pa 'yun. ✨",
-  "Yung typing speed mo mabilis, pero yung utak mo naka-pause pa. ⏸️🤖",
-  "Sana may 'undo' button sa buhay para sa mga sinabi mo kanina. ↩️💀",
-  "Ang lalim ng sinabi mo… kaso wala naman sa ilalim ang laman. 🕳️",
-  "Baka pwedeng next time, wag na lang mag-chat? Salamat. 🙏😏",
-  "Nagbasa ka ba ng libro kahit minsan? O sadyang ganito ka talaga. 📚❌",
-  "Mukhang masakit maging ikalawang utak mo. Pasensya na sa'yo. 🫂💀",
-  "Pag natapos ka na magsalita, sabihan mo ako para makahinga na tayo lahat. 😮‍💨",
-  "Yung sinabi mo parang joke na walang punchline — nakakahiya lang. 🥲",
-  "Hindi ka kailangang maging tama palagi, pero pwede bang minsan lang? 🥺🤏",
-  "Kung tanga ay award, nanalo ka na ng grand champion. 🏆🤡",
-  "Magsuot ka ng mask, hindi dahil sa virus — kundi para hindi na kami makarinig. 😷💀",
-  "Mas may saysay pa ang katahimikan kaysa sa mga sinasabi mo. 🤫✨",
-  "Sana may filter ang bibig mo, kasi puro kalat ang lumalabas. 🧹🤢",
-  "Ang dali ng topic, pero ikaw pa ang naligaw ng daan. 🗺️😵",
-  "Huwag mong piliting magmukhang matalino kung wala ka namang laman. 🧠❌",
-  "Bumalik ka na lang kapag may laman na yang utak mo, sige. 👋😂",
-  "Yung reply mo parang tinapay na walang palaman — walang lasa. 🍞😐",
-  "Kahit si Google hindi alam kung paano sasagot sa kalokohan mo. 🔍❓",
-  "Mabuti pa ang aso, tumatahol lang pero hindi nakakahiya. 🐶💀",
-  "Baka naman nahihirapan ka na? Magpahinga ka muna pre. 🪑😅",
-  "Ang ganda sana ng araw ko, hanggang sa nagbasa ako ng chat mo. 🌅💩",
-  "Isipin mo muna bago ka mag-type — yung utak mo, gamitin mo naman minsan. 🧠✨",
-  "Wala nang mas sasakit pa sa pagbasa ng message mo, promise. 🤕😂",
-  "Sana nakita mo yung mukha ko habang binabasa ko 'yan — blankong pagkagulat. 😐💀",
-  "Ang hirap intindihin, parang math na hindi ko talaga gusto. 📐😖",
-  "May tinanong ba ako? Parang wala naman ah. 🤨✋",
-  "Ikaw lang ang nakakaintindi sa sarili mo, at kahit ikaw siguro hindi rin sigurado. 🤪🌀",
-  "Huwag ka nang mag-alala, nakakalimutan din naman agad namin ang sinabi mo. 😌🗑️",
-  "Kaya pala tahimik ang paligid — dahil nagsalita ka na. 🤫📢",
-  "Mabuti pa ang bato, hindi nagsasalita pero matatag pa rin. 🪨💪",
-  "Ang bilis mong magsalita pero mabagal ka mag-isip. ⚡🐢",
-  "Magbasa ka muna ng libro bago ka bumalik dito, please? 📖🙏",
-  "Hindi insulto ang sinasabi ko, katotohanan lang na ayaw mong tanggapin. 🗡️😐",
-  "Yung message mo parang ulap — maganda tingnan pero walang laman. ☁️💀",
-  "Pagod na akong intindihin kung bakit ganyan ka mag-isip. 😩🤦",
-  "Baka pwede mong ipaliwanag? Kasi kahit ang utak ko umiiwas na sa'yo. 🧠🏃‍♂️",
-  "Mas maikli pa ang pasensya ko kaysa sa attention span mo. ⏳😒",
-  "Sana next time mag-chat ka, may saysay naman kahit konti lang. 🙏✨",
-  "Ang dami mong alam pero mali naman ang karamihan. 📚❌",
-  "Parang na-stress ako bigla sa nabasa ko. Salamat ha? 😑💆",
-  "Yung ngiti ko pilit na lang habang binabasa ko 'to. 😬💀",
-  "Kung katahimikan ang ginto, milyonaryo ka na sana kung tumahimik ka. 🤫💰",
-  "Hindi mo kailangang patunayan na mali ka — ginawa mo na agad. 🎯🤡",
-  "Magsulat ka na lang sa pader, mas may saysay pa 'yun kaysa dito. 🧱✍️",
-  "Nagkamali ka yata ng chat room, hindi 'to tambayan ng walang alam. 🚪👋",
-  "Ang lakas ng loob mong magtanong kahit nandoon na ang sagot. 🤨👀",
-  "Mag-enjoy ka na lang sa buhay mo, wag ka nang mag-chat dito. ✌️😊",
-  "Sana naging mahinahon ka na lang, mas okay pa 'yun. 🕊️💙",
-  "Hindi masamang magtanong — masama yung nagtatanong pero hindi nakikinig. 👂📢",
-  "Ang sinabi mo parang kanta na paulit-ulit — nakakasawa na rin. 🎵😮‍💨",
-  "May utak ka ba talaga o display lang sa ulo mo? 🧠🤔",
-  "Yung reply mo parang laro na hindi ko na gustong laruin. 🎮🚫",
-  "Mabuti pang matulog ka na, mas productive pa 'yun. 😴💤",
-  "Konting respeto naman sa sarili mo, pre. 😌🤝",
-  "Huwag mong piliting sumabay kung hindi mo kaya ang agos. 🌊🏊‍♂️",
-  "Ang daming mas magandang gawin kaysa magbasa ng message mo. 🕐📉",
-  "Sana sa susunod na buhay, may utak ka na. 🪦✨😂",
-  "Wala akong masabi — masyadong malalim ang kawalan ng saysay. 🕳️🌑",
-  "Ikaw ang dahilan kung bakit kailangan ng mute button ang mundo. 🔇🌍",
-  "Ang hirap mong kausap — parang pader na hindi sumasagot pero mas matalino pa rin. 🧱🗣️",
-  "Ikaw yung uri ng tao na mas maayos kapag tahimik. 🤫✨",
-  "Walang nanalo sa argumentong kasama ka — kasi walang saysay. 🥀⚰️",
-  "Mag-inom ka ng tubig, baka matunaw ang utak mo sa kakaisip ng kalokohan. 💧🧠",
-  "Ang gulo ng sinabi mo, parang puzzle na nawawala ang mga piraso. 🧩❌❌",
-  "Mas okay pang hindi magsalita kaysa magsalita pero mali naman. 🤐✅",
-  "Sana natutunan mo na ang leksyon ngayon — wag basta magsalita nang walang laman. 📚💡",
-  "Yung sinabi mo parang lumang balita — luma na, mali pa. 📰❌",
-  "Ang lakas ng loob mong mag-post kahit alam mong walang kwenta. 💪💀",
-  "Baka pwede mong bawasan ang pag-chat at dagdagan ang pag-iisip? Salamat. 🙏🧠",
-  "Ikaw ang dahilan kung bakit mas gusto ko nang maging pader na lang. 🧱😌",
-  "Ang dami mong sinasabi pero wala namang pumapasok sa utak namin. 🚧🧠❌",
-  "Hindi ko matandaan ang sinabi mo — at ayaw ko ring maalala. 🧠✂️🗑️",
-  "Sana may 'bawal mag-chat' sign para sa'yo lang. 🪧🚫😂",
-  "Yung message mo parang hangin — dumaan lang, wala namang epekto. 💨🌬️",
-  "Mas may karisma pa ang pader kaysa sa'yo eh. 🧱✨😂",
-  "Pagod na ang mga mata ko kakabasa ng kalokohan mo. 👁️👁️😩",
-  "Ang ganda sana ng usapan, hanggang sumagot ka. 💐☠️",
-  "Wala ka namang tinutulong, puro ka lang salita. 🗣️⚡❌",
-  "Sana tinago mo na lang yung sinabi mo, mas okay pa. 🤫📦🔒",
-  "Bakit parang mas matalino pa ang aso ko kaysa sa sinabi mo? 🐕🧠😂",
-  "Ang hirap mong intindihin — parang wikang hindi ko pa naririnig. 🌍🗣️❓",
-  "Ikaw yung proof na pwede namang mabuhay nang walang utak. 🧠👻💀",
-  "Mas maikli pa ang pasensya ko kaysa sa message mo — at mahaba na 'yun. ⏳📏😒",
-  "Konting respeto sa sarili, pre. Hindi masama 'yun. 🙏😊",
-  "Ang bilis mag-type pero mabagal mag-isip — classic ikaw. ⌨️🧠🐢",
-  "Sana nakita mo yung mukha ko — parang nakakita ako ng multo. 👻😶💀",
-  "Wala akong sasabihin — wala talagang maisip na maganda sa sinabi mo. 🚫💐",
-  "Mabuti pang magbasa ka ng libro kaysa mag-chat dito. 📖✨",
-  "Ang daming mas magandang gawin kaysa basahin 'yan. 🕐🚀",
-  "Ikaw yung dahilan kung bakit mas gusto kong maging offline palagi. 📴😌",
-  "Yung sinabi mo parang ulap — maganda tingnan pero wala namang tubig. ☁️💧❌",
-  "Hindi masamang magkamali — masama yung ipinipilit mong tama ka kahit mali naman. ✅❌😤",
-  "Sana matuto kang makinig bago ka magsalita — minsan lang naman hilingin 'yun. 🦻💡🙏",
-  "Ang hirap mong sundan — parang kalsadang walang signpost. 🛣️🪧😵",
-  "Yung message mo parang biro na hindi nakakatawa — awkward lang. 🥲💀",
-  "Mas may saysay pa ang katahimikan kaysa sa ingay na galing sa'yo. 🤫🔇✨",
-  "Ikaw ang dahilan kung bakit mas gusto kong magbasa na lang ng libro. 📚📖😊",
-  "Wala akong masabi — talagang wala lang talaga. 🤐🤷‍♂️"
+  "I-tago mo muna 'yang phone mo lods, nagpapatunay ka lang ng kawalan ng amag sa utak. 💀 💯 🤪",
+  "Ang lakas ng radar mo sa pagiging corny, panalo ka na naman ngayon. 💯 🤪",
+  "Lodi, subukan mo kayang mag-unseat muna sa chat box? Nakaka-distract ka. 💯 🤪",
+  "Kung nakakamatay lang ang pagiging epal, matagal ka nang wala rito. 💯 🤪",
+  "Ano 'yan, joke o confession of stupidity? Pabasa naman ng guide. 💯 🤪",
+  "Hindi ka ba napapagod na maging tampulan ng tawanan araw-araw? 💯 🤪",
+  "Bro, stop cooking... you're burning the whole kitchen down. 💀 💯 🤪",
+  "Ang hangin mo masyado, wala ka namang maipakitang resibo. 💯 🤪",
+  "Gusto ko sana kitang barahin kaso baka maiyak ka pa. 💯 🤪",
+  "Sayang naman yung pinaload mo, ginamit mo lang sa katangahan. 💯 🤪",
+  "Sana maging kasing linaw ng paningin mo yung kalokohang pinagsasabi mo. 💯 🤪",
+  "Huwag ka nang mag-salita pre, nababawasan IQ ng buong group chat. 💯 🤪",
+  "Kahit sinong admin dito, gustong-gusto ka nang i-remove kaso naaawa lang. 🤡 💯 🤪",
+  "Lakas mag-attitude, kasing babaw naman ng plato 'yang dahilan mo. 💯 🤪",
+  "Yung confidence mo parang wifi na 1-bar, napaka-weak. 💀 💯 🤪",
+  "Sana naman pumasok sa utak mo na walang may pake sa sinasabi mo. 💯 🤪",
+  "Gusto mo yata ng trophy para sa pinakamakuwan sa GC ah? 💯 🤪",
+  "Sana itinulog mo na lang 'yan, nabawasan pa kami ng braincells. 💯 🤪"
 ];
 
+// Anti-Spam Memory Maps & Cooldowns
+const userLastMsgTime = new Map();
 const threadLastReplyTime = new Map();
-const COOLDOWN_DELAY = 2000;
+const SPAM_USER_LIMIT = 2500; // 2.5s cooldown per user
+const COOLDOWN_DELAY = 2000;    // 2s delay between auto-replies
 
 let localMemoryData = { active: false, activatedBy: null, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
 
@@ -255,49 +171,47 @@ module.exports.handleEvent = async function ({ api, event }) {
     const newNick = logMessageData ? logMessageData.nickname : "";
 
     if (changedUser && newNick !== currentLockedNick) {
-      await sleep(1500);
-      api.changeNickname(currentLockedNick, threadID, changedUser, (err) => {
-        if (err) console.log(`[Nick Lock Skipped]: ${err.message}`);
-      });
+      await sleep(1000);
+      api.changeNickname(currentLockedNick, threadID, changedUser, () => {});
     }
     return;
   }
 
   if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
 
-  // 3. COOLDOWN
+  // ALWAYS AUTO-REACT TO EVERY MESSAGE
+  try {
+    const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    api.setMessageReaction(randomEmoji, messageID, () => {}, true);
+  } catch (e) {}
+
+  // 3. ANTI-SPAM & RATE LIMIT CHECK FOR TEXT REPLIES
   const now = Date.now();
+  const lastUserTime = userLastMsgTime.get(senderID) || 0;
   const lastThreadTime = threadLastReplyTime.get(threadID) || 0;
-  if (now - lastThreadTime < COOLDOWN_DELAY) return;
+
+  if (now - lastUserTime < SPAM_USER_LIMIT || now - lastThreadTime < COOLDOWN_DELAY) {
+    return;
+  }
+  userLastMsgTime.set(senderID, now);
   threadLastReplyTime.set(threadID, now);
 
-  // 4. AUTO-REACT to user's message
-  const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-  api.setMessageReaction(randomEmoji, messageID, (err) => {
-    if (err) console.log("[React Skipped]:", err.message);
-  }, true);
-
-  // 5. SEND ROAST + SELF-REACT
+  // 4. AUTO REPLY ROAST WITH TYPING INDICATOR
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-  await sleep(1000);
-
-  api.sendMessage({
-    body: randomRoast,
-    mentions: [{ tag: `@${senderID}`, id: senderID }]
-  }, threadID, async (err, info) => {
-    if (err) return console.log("[Send Error]:", err.message);
-    
-    // ✅ FIXED SELF-REACT — may delay at check
-    if (info && info.messageID) {
-      await sleep(600); // wait bago mag-react
-      try {
-        const selfEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-        api.setMessageReaction(selfEmoji, info.messageID, (reactErr) => {
-          if (reactErr) console.log("[Self-React Skipped]:", reactErr.message);
-        }, true);
-      } catch (e) {
-        console.log("[Self-React Fail]:", e.message);
-      }
+  
+  // TRIGGER TYPING INDICATOR BEFORE SENDING REPLIES
+  api.sendTypingIndicator(threadID, async (err) => {
+    if (!err) {
+      await sleep(1500); // Wait 1.5 seconds while typing indicator is visible
+      api.sendMessage({
+        body: randomRoast,
+        mentions: [{ tag: `@${senderID}`, id: senderID }]
+      }, threadID, messageID);
+    } else {
+      api.sendMessage({
+        body: randomRoast,
+        mentions: [{ tag: `@${senderID}`, id: senderID }]
+      }, threadID, messageID);
     }
   });
 };
@@ -308,90 +222,125 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!checkIsAdmin(senderID)) {
     const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-    return api.sendMessage(randomRoast, threadID, messageID);
+    api.sendTypingIndicator(threadID, async () => {
+      await sleep(1200);
+      return api.sendMessage(randomRoast, threadID, messageID);
+    });
+    return;
   }
 
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
+  // /Ryuk on
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
     data.activatedAt = Date.now();
     saveData(data);
-    return api.sendMessage(
-      `🔥 GLOBAL AUTO-ROAST: ACTIVATED\n\n` +
-      `• Mode: Infinite / Permanent\n` +
-      `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
-      `• ✅ Auto-React + Self-React: ENABLED\n\n` +
-      `/ryuk off — to stop`,
-      threadID, messageID
-    );
-  }
 
-  if (sub === "off") {
-    if (isActive()) {
-      data.active = false;
-      saveData(data);
-      return api.sendMessage("✅ Auto-Roast turned OFF.", threadID, messageID);
-    }
-    return api.sendMessage("Auto-roast is already OFF.", threadID, messageID);
-  }
-
-  if (sub === "setgname") {
-    const newGName = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
-    data.lockedGName = newGName;
-    saveData(data);
-    api.setTitle(newGName, threadID, (err) => {
-      if (err) return api.sendMessage("❌ Failed to change GC Name.", threadID, messageID);
-      return api.sendMessage(`🔒 GC Name locked to: "${newGName}"`, threadID, messageID);
+    api.sendTypingIndicator(threadID, async () => {
+      await sleep(1000);
+      return api.sendMessage(
+        `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
+        `• Typing Indicator: ENABLED ✍️\n` +
+        `• Permission Level: 2 (Bot Owner Only)\n` +
+        `• Mode: Infinite / Permanent (Walang Hinto)\n` +
+        `• Anti-Spam: ENABLED\n` +
+        `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+        `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
+        `• Auto-Reply Cooldown: 2 Seconds\n` +
+        `• Setnick Delay: 2 Seconds/User\n\n` +
+        `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
+        `Gamitin ang "/Ryuk off" kapag gustong ihinto.`,
+        threadID,
+        messageID
+      );
     });
     return;
   }
 
+  // /Ryuk off
+  if (sub === "off") {
+    if (isActive()) {
+      data.active = false;
+      saveData(data);
+      api.sendTypingIndicator(threadID, async () => {
+        await sleep(1000);
+        return api.sendMessage("✅ Infinite Auto-Roast turned OFF.", threadID, messageID);
+      });
+      return;
+    }
+    return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
+  }
+
+  // /Ryuk setgname <name>
+  if (sub === "setgname") {
+    const newGName = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
+    data.lockedGName = newGName;
+    saveData(data);
+
+    api.setTitle(newGName, threadID, (err) => {
+      if (err) return api.sendMessage("❌ Failed to change GC Name.", threadID, messageID);
+      return api.sendMessage(`🔒 GC Name locked and updated to: "${newGName}"`, threadID, messageID);
+    });
+    return;
+  }
+
+  // /Ryuk setnick <name>
   if (sub === "setnick") {
     const newNick = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedNick = newNick;
     saveData(data);
+
     try {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
-      
-      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (3s delay each)...`, threadID);
-      
-      // ✅ MAS STABLE — 3 SECONDS DELAY
+
+      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (2s delay per user)...`, threadID);
+
       for (const uid of participantIDs) {
-        await sleep(3000);
-        api.changeNickname(newNick, threadID, uid, (err) => {
-          if (err) console.log(`[Nick Skip ${uid}]:`, err.message);
+        await sleep(2000);
+        await new Promise((resolve) => {
+          api.changeNickname(newNick, threadID, uid, () => resolve());
         });
       }
-      return api.sendMessage(`🔒 All nicknames locked to: "${newNick}" ✅`, threadID, messageID);
+      return api.sendMessage(`🔒 All nicknames locked to: "${newNick}"`, threadID, messageID);
     } catch (e) {
-      return api.sendMessage("❌ Failed to set nicknames.", threadID, messageID);
+      return api.sendMessage("❌ Failed to set nicknames. Make sure bot is GC Admin!", threadID, messageID);
     }
   }
 
+  // /Ryuk status
   if (sub === "status") {
-    if (!isActive()) return api.sendMessage("Auto-roast is OFF.", threadID, messageID);
-    return api.sendMessage(
-      `🔥 Auto-Roast is ACTIVE\n\n` +
-      `📌 GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `📌 Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
-      `✨ Auto-React: ON | Self-React: ON`,
-      threadID, messageID
-    );
+    if (!isActive()) {
+      return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
+    }
+    api.sendTypingIndicator(threadID, async () => {
+      await sleep(1000);
+      return api.sendMessage(
+        `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
+        `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
+        `✍️ Typing Indicator: Active\n` +
+        `🛡️ Anti-Spam: Active\n` +
+        `🔒 Permission Required: Level 2\n` +
+        `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+        `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
+        threadID,
+        messageID
+      );
+    });
+    return;
   }
 
   return api.sendMessage(
-    `Usage:\n` +
-    `/ryuk on — Start\n` +
-    `/ryuk off — Stop\n` +
-    `/ryuk setgname <name> — Lock GC Name\n` +
-    `/ryuk setnick <name> — Lock All Nicknames\n` +
-    `/ryuk status — Check status`,
-    threadID, messageID
+    `Usage (Admin Only - Perm 2):\n` +
+    `/Ryuk on — Start Infinite Auto-Roast\n` +
+    `/Ryuk off — Stop Auto-Roast\n` +
+    `/Ryuk setgname <name> — Lock GC Name (Default: Ryuk)\n` +
+    `/Ryuk setnick <name> — Lock All Nicknames (Default: Ryuk)\n` +
+    `/Ryuk status — Check status`,
+    threadID,
+    messageID
   );
 };
-  
