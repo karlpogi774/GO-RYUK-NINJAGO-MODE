@@ -3,8 +3,8 @@ const path = require("path");
 
 module.exports.config = {
   name: "Ryuk",
-  version: "3.8.0",
-  hasPermission: 2, // Permission level 2 (Bot Owner / Admin)
+  version: "3.9.0",
+  hasPermission: 0, // Set to 0 so the script internal admin check handles authorization
   credits: "sinzu & Gemini",
   description: "Infinite global auto-roast with Typing Indicator, Multi-Admin Locks, Anti-Spam, Render fix, 2s setnick delay, Auto React, and Name Guard.",
   usePrefix: true,
@@ -14,7 +14,7 @@ module.exports.config = {
 };
 
 // ================= CONFIGURATION =================
-// LISTAHAN NG MGA ADMIN UIDs
+// LISTAHAN NG MGA ADMIN UIDs (APAT NA AUTHORIZED ACCOUNTS)
 const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
@@ -199,38 +199,31 @@ module.exports.handleEvent = async function ({ api, event }) {
   // 4. AUTO REPLY ROAST WITH TYPING INDICATOR
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
   
-  // TRIGGER TYPING INDICATOR BEFORE SENDING REPLIES
-  api.sendTypingIndicator(threadID, async (err) => {
-    if (!err) {
-      await sleep(1500); // Wait 1.5 seconds while typing indicator is visible
-      api.sendMessage({
-        body: randomRoast,
-        mentions: [{ tag: `@${senderID}`, id: senderID }]
-      }, threadID, messageID);
-    } else {
-      api.sendMessage({
-        body: randomRoast,
-        mentions: [{ tag: `@${senderID}`, id: senderID }]
-      }, threadID, messageID);
-    }
-  });
+  try {
+    api.sendTypingIndicator(threadID, () => {});
+  } catch (e) {}
+
+  await sleep(1500); // 1.5s typing delay
+
+  api.sendMessage({
+    body: randomRoast,
+    mentions: [{ tag: `@${senderID}`, id: senderID }]
+  }, threadID, messageID);
 };
 
 // ===== COMMAND HANDLER =====
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
 
-  if (!checkIsAdmin(senderID)) {
-    const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-    api.sendTypingIndicator(threadID, async () => {
-      await sleep(1200);
-      return api.sendMessage(randomRoast, threadID, messageID);
-    });
-    return;
-  }
-
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
+
+  if (!checkIsAdmin(senderID)) {
+    const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
+    try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+    await sleep(1200);
+    return api.sendMessage(randomRoast, threadID, messageID);
+  }
 
   // /Ryuk on
   if (sub === "on") {
@@ -239,25 +232,23 @@ module.exports.run = async function ({ api, event, args }) {
     data.activatedAt = Date.now();
     saveData(data);
 
-    api.sendTypingIndicator(threadID, async () => {
-      await sleep(1000);
-      return api.sendMessage(
-        `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
-        `• Typing Indicator: ENABLED ✍️\n` +
-        `• Permission Level: 2 (Bot Owner Only)\n` +
-        `• Mode: Infinite / Permanent (Walang Hinto)\n` +
-        `• Anti-Spam: ENABLED\n` +
-        `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-        `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
-        `• Auto-Reply Cooldown: 2 Seconds\n` +
-        `• Setnick Delay: 2 Seconds/User\n\n` +
-        `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
-        `Gamitin ang "/Ryuk off" kapag gustong ihinto.`,
-        threadID,
-        messageID
-      );
-    });
-    return;
+    try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+    await sleep(1000);
+
+    return api.sendMessage(
+      `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
+      `• Typing Indicator: ENABLED ✍️\n` +
+      `• Mode: Infinite / Permanent (Walang Hinto)\n` +
+      `• Anti-Spam: ENABLED\n` +
+      `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
+      `• Auto-Reply Cooldown: 2 Seconds\n` +
+      `• Setnick Delay: 2 Seconds/User\n\n` +
+      `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
+      `Gamitin ang "/Ryuk off" kapag gustong ihinto.`,
+      threadID,
+      messageID
+    );
   }
 
   // /Ryuk off
@@ -265,11 +256,9 @@ module.exports.run = async function ({ api, event, args }) {
     if (isActive()) {
       data.active = false;
       saveData(data);
-      api.sendTypingIndicator(threadID, async () => {
-        await sleep(1000);
-        return api.sendMessage("✅ Infinite Auto-Roast turned OFF.", threadID, messageID);
-      });
-      return;
+      try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+      await sleep(1000);
+      return api.sendMessage("✅ Infinite Auto-Roast turned OFF.", threadID, messageID);
     }
     return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
   }
@@ -316,25 +305,22 @@ module.exports.run = async function ({ api, event, args }) {
     if (!isActive()) {
       return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
     }
-    api.sendTypingIndicator(threadID, async () => {
-      await sleep(1000);
-      return api.sendMessage(
-        `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
-        `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
-        `✍️ Typing Indicator: Active\n` +
-        `🛡️ Anti-Spam: Active\n` +
-        `🔒 Permission Required: Level 2\n` +
-        `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-        `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
-        threadID,
-        messageID
-      );
-    });
-    return;
+    try { api.sendTypingIndicator(threadID, () => {}); } catch (e) {}
+    await sleep(1000);
+    return api.sendMessage(
+      `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
+      `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
+      `✍️ Typing Indicator: Active\n` +
+      `🛡️ Anti-Spam: Active\n` +
+      `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
+      threadID,
+      messageID
+    );
   }
 
   return api.sendMessage(
-    `Usage (Admin Only - Perm 2):\n` +
+    `Usage (Admin Only):\n` +
     `/Ryuk on — Start Infinite Auto-Roast\n` +
     `/Ryuk off — Stop Auto-Roast\n` +
     `/Ryuk setgname <name> — Lock GC Name (Default: Ryuk)\n` +
