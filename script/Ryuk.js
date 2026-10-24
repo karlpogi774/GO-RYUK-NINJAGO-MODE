@@ -4,7 +4,7 @@ const path = require("path");
 module.exports.config = {
   name: "Ryuk",
   version: "3.9.0",
-  hasPermission: 0, // Set to 0 so the script internal admin check handles authorization
+  hasPermission: 0, // Set to 0 so internal multi-admin check handles permission
   credits: "sinzu & Gemini",
   description: "Infinite global auto-roast with Typing Indicator, Multi-Admin Locks, Anti-Spam, Render fix, 2s setnick delay, Auto React, and Name Guard.",
   usePrefix: true,
@@ -203,7 +203,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.sendTypingIndicator(threadID, () => {});
   } catch (e) {}
 
-  await sleep(1500); // 1.5s typing delay
+  await sleep(1500); // Wait 1.5 seconds while typing bubble is active
 
   api.sendMessage({
     body: randomRoast,
