@@ -25,7 +25,7 @@ const ADMIN_UIDS = [
 const DEFAULT_LOCKED_NAME = "Ryuk";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-const EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎", "💩", "👻", "🐶", "💯", "🤪"];
+const EMOJIS = ["😆"];
 
 // Massive List of Roast Lines
 const ROASTS = [
