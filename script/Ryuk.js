@@ -3,17 +3,16 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "4.0.0",
+  version: "4.1.0",
   hasPermission: 2,
   credits: "sinzu & Gemini + Dola",
-  description: "Infinite global auto-roast • Self-React • Multi-Admin Locks • Render fix • Name Guard",
+  description: "Infinite auto-roast • Fixed Self-React • Stable Setnick • Name Guard",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
   cooldowns: 2
 };
 
-// ================= CONFIGURATION =================
 const ADMIN_UIDS = [
   "61593892603402",
   "61594022290817",
@@ -24,12 +23,9 @@ const ADMIN_UIDS = [
 const DEFAULT_LOCKED_NAME = "Ryuk";
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-// ✅ EMOJI LIST — pwede dagdagan pa!
 const EMOJIS = ["🥷", "🔥", "💀", "🗿", "😏", "🤌", "⚡", "👹"];
 
-// ✅ DAGDAG NA ROAST LINES — 100+ na to!
 const ROASTS = [
-  // — ORIGINAL —
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀 💯 🤪",
   "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣 💯 🤪",
   "Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta. 💯 🤪",
@@ -82,8 +78,6 @@ const ROASTS = [
   "Magkano bayad sa'yo para maging ganyan ka-epal araw-araw? 💯 🤪",
   "May pa-type type ka pa, burahin mo na lang 'yan pre. 💯 🤪",
   "Minsan na nga lang mag-chat, nakakairita pa. 💯 🤪",
-
-  // ✅ — BAGONG DAGDAG —
   "Grabe yung message, parang ginawa habang naglalakad nang nakapikit. 🚶‍♂️💀",
   "Kung pag-iisip ang usapan, naka-offline ka pa rin hanggang ngayon. 📵",
   "Hindi ko sasabihing wala kang utak… pero mas malinaw pa sa tubig ang ebidensya. 💧🤡",
@@ -153,25 +147,6 @@ const ROASTS = [
   "Sana sa susunod na buhay, may utak ka na. 🪦✨😂",
   "Wala akong masabi — masyadong malalim ang kawalan ng saysay. 🕳️🌑",
   "Ikaw ang dahilan kung bakit kailangan ng mute button ang mundo. 🔇🌍",
-  "Ang hirap suportahan ng taong walang direksyon ang sinasabi. 🧭😵",
-  "Pagkatapos mong magsalita, parang mas lalo akong nalito. 🌀🤯",
-  "Yung confidence mo nakaka-inspire — sana kasama na yung talino. 💡🤲",
-  "Hindi ka nakakatawa, sadyang sanay lang kaming tumawa sa kalokohan mo. 😂💀",
-  "Magsulat ka ng libro — pamagatan mong 'Walang Saysay'. Sigurado best seller 'yan. 📘🤣",
-  "Kahit anong gawin mo, hindi magiging tama ang maling simula. 🌱❌",
-  "Bakit parang mas marami pang alam ang pader kaysa sa'yo? 🧱🧠",
-  "Ang dali ng tanong, pero ikaw ang nagpalito. 🤔💢",
-  "Pahinga ka muna sa pag-chat, baka maubos pa ang natitirang talino mo. 😴🧠",
-  "Wala nang masakit pa kaysa sa basahin ang buong message mo. 🤕📄",
-  "Sana may warning bago ka mag-chat — parang virus kasi. ⚠️🦠💀",
-  "Mas masarap pa ang kain kaysa basahin ang sinabi mo. 🍔🤤",
-  "Ang bilis mong magsalita pero mabagal kang intindihin. ⚡🐢",
-  "Yung sinabi mo parang ulan — bumuhos lang pero walang direksyon. 🌧️💨",
-  "Hindi porket nandito ka, kailangan mong maging bida. 🎭🎬",
-  "Mas tahimik na sana ang mundo kung hindi ka na magsasalita. 🌏🤫",
-  "Mag-aral ka muna ng basic logic bago ka bumalik dito. 📐🧠",
-  "Yung message mo parang basura — pwedeng itapon agad. 🗑️💀",
-  "Sana sa susunod mag-chat ka, may laman naman. 🙏📦",
   "Ang hirap mong kausap — parang pader na hindi sumasagot pero mas matalino pa rin. 🧱🗣️",
   "Ikaw yung uri ng tao na mas maayos kapag tahimik. 🤫✨",
   "Walang nanalo sa argumentong kasama ka — kasi walang saysay. 🥀⚰️",
@@ -280,28 +255,29 @@ module.exports.handleEvent = async function ({ api, event }) {
     const newNick = logMessageData ? logMessageData.nickname : "";
 
     if (changedUser && newNick !== currentLockedNick) {
-      await sleep(1000);
-      api.changeNickname(currentLockedNick, threadID, changedUser, () => {});
+      await sleep(1500);
+      api.changeNickname(currentLockedNick, threadID, changedUser, (err) => {
+        if (err) console.log(`[Nick Lock Skipped]: ${err.message}`);
+      });
     }
     return;
   }
 
   if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
 
-  // 3. 2 SECONDS AUTO REPLY COOLDOWN
+  // 3. COOLDOWN
   const now = Date.now();
   const lastThreadTime = threadLastReplyTime.get(threadID) || 0;
-
-  if (now - lastThreadTime < COOLDOWN_DELAY) {
-    return;
-  }
+  if (now - lastThreadTime < COOLDOWN_DELAY) return;
   threadLastReplyTime.set(threadID, now);
 
-  // 4. AUTO REACT sa MESSAGE NG IBANG TAO
+  // 4. AUTO-REACT to user's message
   const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-  api.setMessageReaction(randomEmoji, messageID, () => {}, true);
+  api.setMessageReaction(randomEmoji, messageID, (err) => {
+    if (err) console.log("[React Skipped]:", err.message);
+  }, true);
 
-  // 5. AUTO REPLY ROAST
+  // 5. SEND ROAST + SELF-REACT
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
   await sleep(1000);
 
@@ -309,10 +285,19 @@ module.exports.handleEvent = async function ({ api, event }) {
     body: randomRoast,
     mentions: [{ tag: `@${senderID}`, id: senderID }]
   }, threadID, async (err, info) => {
-    if (!err) {
-      // ✅ SELF-REACT: BOT REACTS SA SARILI NIYANG MESSAGE
-      const selfReactEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-      api.setMessageReaction(selfReactEmoji, info.messageID, () => {}, true);
+    if (err) return console.log("[Send Error]:", err.message);
+    
+    // ✅ FIXED SELF-REACT — may delay at check
+    if (info && info.messageID) {
+      await sleep(600); // wait bago mag-react
+      try {
+        const selfEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+        api.setMessageReaction(selfEmoji, info.messageID, (reactErr) => {
+          if (reactErr) console.log("[Self-React Skipped]:", reactErr.message);
+        }, true);
+      } catch (e) {
+        console.log("[Self-React Fail]:", e.message);
+      }
     }
   });
 };
@@ -329,97 +314,84 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // /ryuk on
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
     data.activatedAt = Date.now();
     saveData(data);
-
     return api.sendMessage(
-      `🔥 GLOBAL AUTO-ROAST & PROTECTION (INFINITY MODE): ACTIVATED\n\n` +
-      `• Mode: Infinite / Permanent (Walang Hinto)\n` +
+      `🔥 GLOBAL AUTO-ROAST: ACTIVATED\n\n` +
+      `• Mode: Infinite / Permanent\n` +
       `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
-      `• Auto-Reply Cooldown: 2 Seconds\n` +
-      `• Setnick Delay: 2 Seconds/User\n` +
-      `• ✅ Self-React: ENABLED\n\n` +
-      `GUMAGANA ITO NANG WALANG HINTO AT WALANG TIME LIMIT!\n` +
-      `Gamitin ang "/ryuk off" kapag gustong ihinto.`,
-      threadID,
-      messageID
+      `• ✅ Auto-React + Self-React: ENABLED\n\n` +
+      `/ryuk off — to stop`,
+      threadID, messageID
     );
   }
 
-  // /ryuk off
   if (sub === "off") {
     if (isActive()) {
       data.active = false;
       saveData(data);
-      return api.sendMessage("✅ Infinite Auto-Roast turned OFF.", threadID, messageID);
+      return api.sendMessage("✅ Auto-Roast turned OFF.", threadID, messageID);
     }
-    return api.sendMessage("Auto-roast is currently OFF.", threadID, messageID);
+    return api.sendMessage("Auto-roast is already OFF.", threadID, messageID);
   }
 
-  // /ryuk setgname <name>
   if (sub === "setgname") {
     const newGName = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedGName = newGName;
     saveData(data);
-
     api.setTitle(newGName, threadID, (err) => {
       if (err) return api.sendMessage("❌ Failed to change GC Name.", threadID, messageID);
-      return api.sendMessage(`🔒 GC Name locked and updated to: "${newGName}"`, threadID, messageID);
+      return api.sendMessage(`🔒 GC Name locked to: "${newGName}"`, threadID, messageID);
     });
     return;
   }
 
-  // /ryuk setnick <name>
   if (sub === "setnick") {
     const newNick = args.slice(1).join(" ") || DEFAULT_LOCKED_NAME;
     data.lockedNick = newNick;
     saveData(data);
-
     try {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
-
-      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (2s delay per user)...`, threadID);
-
+      
+      api.sendMessage(`⏳ Locking all nicknames to: "${newNick}" (3s delay each)...`, threadID);
+      
+      // ✅ MAS STABLE — 3 SECONDS DELAY
       for (const uid of participantIDs) {
-        await sleep(2000);
-        api.changeNickname(newNick, threadID, uid, () => {});
+        await sleep(3000);
+        api.changeNickname(newNick, threadID, uid, (err) => {
+          if (err) console.log(`[Nick Skip ${uid}]:`, err.message);
+        });
       }
-      return api.sendMessage(`🔒 All nicknames locked to: "${newNick}"`, threadID, messageID);
+      return api.sendMessage(`🔒 All nicknames locked to: "${newNick}" ✅`, threadID, messageID);
     } catch (e) {
       return api.sendMessage("❌ Failed to set nicknames.", threadID, messageID);
     }
   }
 
-  // /ryuk status
   if (sub === "status") {
-    if (!isActive()) {
-      return api.sendMessage("Global auto-roast is currently OFF.", threadID, messageID);
-    }
+    if (!isActive()) return api.sendMessage("Auto-roast is OFF.", threadID, messageID);
     return api.sendMessage(
-      `🔥 Global Auto-roast is ACTIVE (INFINITY MODE)\n\n` +
-      `⏱️ Duration: NO TIME LIMIT (Walang Hinto)\n` +
-      `📌 Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
-      `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
-      `✨ Features: Auto-Roast • Auto-React • Self-React • Name Guard`,
-      threadID,
-      messageID
+      `🔥 Auto-Roast is ACTIVE\n\n` +
+      `📌 GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
+      `📌 Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n` +
+      `✨ Auto-React: ON | Self-React: ON`,
+      threadID, messageID
     );
   }
 
   return api.sendMessage(
-    `Usage (Admin Only):\n` +
-  `/ryuk on — Start Infinite Auto-Roast\n` +
-     `/ryuk off — Stop Auto-Roast\n` +
-     `/ryuk setgname <name> — Lock GC Name (Default: Ryuk)\n` +
-     `/ryuk setnick <name> — Lock All Nicknames (Default: Ryuk)\n` +
-     `/ryuk status — Check status`,
-     threadID,
-     messageID
-   );
- };
+    `Usage:\n` +
+    `/ryuk on — Start\n` +
+    `/ryuk off — Stop\n` +
+    `/ryuk setgname <name> — Lock GC Name\n` +
+    `/ryuk setnick <name> — Lock All Nicknames\n` +
+    `/ryuk status — Check status`,
+    threadID, messageID
+  );
+};
+  
