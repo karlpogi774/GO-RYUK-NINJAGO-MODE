@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "4.5.0",
-  hasPermission: 0, // Set to 0 so framework permission layer won't block execution
+  version: "5.0.0",
+  hasPermission: 0,
   credits: "sinzu & Gemini",
-  description: "Anti-Detection Infinite Global Auto-Roast with Safe Typing Fallback, Multi-Admin Locks, Anti-Spam, and Name Guard.",
+  description: "100% Safe & Anti-Detection Infinite Global Auto-Roast with Multi-Admin Locks and Natural Humanized Delay.",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status | setgname <name> | setnick <name>",
@@ -71,9 +71,9 @@ const ROASTS = [
 const userLastMsgTime = new Map();
 const threadLastReplyTime = new Map();
 
-// ANTI-DETECTION RATE LIMITS
-const SPAM_USER_LIMIT = 3000; // 3 seconds per user
-const COOLDOWN_DELAY = 2500;   // 2.5 seconds per GC
+// ANTI-DETECTION COOLDOWNS (Sapat na oras para hindi ma-flag)
+const SPAM_USER_LIMIT = 3500; // 3.5 seconds per user
+const COOLDOWN_DELAY = 3000;   // 3 seconds per thread
 
 let memoryState = { active: false, lockedGName: DEFAULT_LOCKED_NAME, lockedNick: DEFAULT_LOCKED_NAME };
 
@@ -99,18 +99,11 @@ function checkIsAdmin(senderID) {
   return ADMIN_UIDS.includes(String(senderID));
 }
 
-// SAFE SEND WITH HUMANIZED TYPING DELAY & FALLBACK
-async function sendSafeWithTyping(api, threadID, msgObj, replyToID = null) {
-  // Try sending native typing indicator non-blockingly
-  try {
-    if (typeof api.sendTypingIndicator === "function") {
-      api.sendTypingIndicator(threadID, () => {});
-    }
-  } catch (e) {}
-
-  // Humanized delay (random 1.8s to 3.2s) to emulate real human typing
-  const randomDelay = Math.floor(Math.random() * 1400) + 1800;
-  await sleep(randomDelay);
+// HUMANLIKE SAFE MESSAGE SENDER
+async function sendHumanizedMessage(api, threadID, msgObj, replyToID = null) {
+  // Random delay (1.8s - 3.0s) simulating typing time
+  const delay = Math.floor(Math.random() * 1200) + 1800;
+  await sleep(delay);
 
   return new Promise((resolve) => {
     if (replyToID) {
@@ -165,9 +158,9 @@ module.exports.handleEvent = async function ({ api, event }) {
   userLastMsgTime.set(senderID, now);
   threadLastReplyTime.set(threadID, now);
 
-  // 4. AUTO-REPLY ROAST WITH SAFE HUMANIZED TYPING DELAY
+  // 4. AUTO-REPLY ROAST WITH SAFE DELAY
   const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-  await sendSafeWithTyping(api, threadID, { body: randomRoast, mentions: [{ tag: `@${senderID}`, id: senderID }] }, messageID);
+  await sendHumanizedMessage(api, threadID, { body: randomRoast, mentions: [{ tag: `@${senderID}`, id: senderID }] }, messageID);
 };
 
 // ===== COMMAND HANDLER =====
@@ -178,17 +171,17 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!checkIsAdmin(senderID)) {
     const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-    return await sendSafeWithTyping(api, threadID, randomRoast, messageID);
+    return await sendHumanizedMessage(api, threadID, randomRoast, messageID);
   }
 
   if (sub === "on") {
     data.active = true;
     saveData(data);
-    return await sendSafeWithTyping(
+    return await sendHumanizedMessage(
       api, threadID,
       `🔥 GLOBAL AUTO-ROAST & PROTECTION: ACTIVATED\n\n` +
-      `• Mode: Anti-Detection Infinity Mode 🛡️\n` +
-      `• Typing Indicator: Safe Enabled\n` +
+      `• Mode: Anti-Detection Active 🛡️\n` +
+      `• Delay Strategy: Natural Human Delay (1.8s - 3.0s)\n` +
       `• Locked GC Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `• Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"\n\n` +
       `GUMAGANA ITO NANG STABLE AT LIGTAS SA BOT DETECTION!\n` +
@@ -200,13 +193,13 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "off") {
     data.active = false;
     saveData(data);
-    return await sendSafeWithTyping(api, threadID, "✅ Infinite Auto-Roast turned OFF.", messageID);
+    return await sendHumanizedMessage(api, threadID, "✅ Infinite Auto-Roast turned OFF.", messageID);
   }
 
   if (sub === "status") {
-    return await sendSafeWithTyping(
+    return await sendHumanizedMessage(
       api, threadID,
-      `🔥 Status: ${data.active ? "ACTIVE (ANTI-DETECTION MODE)" : "OFF"}\n` +
+      `🔥 Status: ${data.active ? "ACTIVE (STABLE MODE)" : "OFF"}\n` +
       `📌 Locked Name: "${data.lockedGName || DEFAULT_LOCKED_NAME}"\n` +
       `📌 Locked Nickname: "${data.lockedNick || DEFAULT_LOCKED_NAME}"`,
       messageID
@@ -218,7 +211,7 @@ module.exports.run = async function ({ api, event, args }) {
     data.lockedGName = newGName;
     saveData(data);
     api.setTitle(newGName, threadID, () => {});
-    return await sendSafeWithTyping(api, threadID, `🔒 GC Name locked and updated to: "${newGName}"`, messageID);
+    return await sendHumanizedMessage(api, threadID, `🔒 GC Name locked and updated to: "${newGName}"`, messageID);
   }
 
   if (sub === "setnick") {
@@ -230,17 +223,17 @@ module.exports.run = async function ({ api, event, args }) {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs || [];
 
-      await sendSafeWithTyping(api, threadID, `⏳ Locking all nicknames to: "${newNick}" (2.5s safe delay)...`, messageID);
+      await sendHumanizedMessage(api, threadID, `⏳ Locking all nicknames to: "${newNick}" (2.5s safe delay)...`, messageID);
 
       for (const uid of participantIDs) {
         await sleep(2500);
         api.changeNickname(newNick, threadID, uid, () => {});
       }
-      return await sendSafeWithTyping(api, threadID, `🔒 All nicknames locked to: "${newNick}"`, messageID);
+      return await sendHumanizedMessage(api, threadID, `🔒 All nicknames locked to: "${newNick}"`, messageID);
     } catch (e) {
-      return await sendSafeWithTyping(api, threadID, "❌ Failed to set nicknames. Make sure bot is GC Admin!", messageID);
+      return await sendHumanizedMessage(api, threadID, "❌ Failed to set nicknames. Make sure bot is GC Admin!", messageID);
     }
   }
 
-  return await sendSafeWithTyping(api, threadID, "Usage: /ryuk on | off | status | setgname <name> | setnick <name>", messageID);
+  return await sendHumanizedMessage(api, threadID, "Usage: /ryuk on | off | status | setgname <name> | setnick <name>", messageID);
 };
