@@ -3,14 +3,14 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "11.0.0",
+  version: "12.0.0-FINAL",
   hasPermission: 0,
-  credits: "sinzu & Gemini + Ryūk Ninja Mode",
-  description: "Ryūk Bot — Sequential loop lines, /silent, mention, reacts to others, anti-detect",
+  credits: "sinzu + Ryūk Ninja Mode",
+  description: "PERFECT — 11s exact delay, NEVER stop replying, sequential loop, anti-detect",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status | reset",
-  cooldowns: 5
+  cooldowns: 1
 };
 
 const ADMIN_UIDS = [
@@ -21,12 +21,11 @@ const ADMIN_UIDS = [
 ];
 
 const DATA_PATH = path.join(__dirname, "ryuk_state.json");
-const EMOJI = "🐕";
+const EMOJI = "😆";
+const REPLY_DELAY = 11000; // ✅ EXACTLY 11 SECONDS — NO CHANGES
 
 // ==============================================
-// SEQUENTIAL LINES — loops start → end → start
-// EVERY LINE FORMAT: /silent Line #XXX: TEXT 💀 💯 @UID
-// EVERY LINE ENDS WITH: - gø Ryūk nīnjāgø mødē
+// SEQUENTIAL LINES — LINE #1 → #100 → BACK TO #1
 // ==============================================
 const ROASTS = [
   "/silent Line #001: Ang galing mong manghusga pero sarili mo hindi mo kayang ituwid. 💀 💯 - gø Ryūk nīnjāgø mødē",
@@ -45,7 +44,7 @@ const ROASTS = [
   "/silent Line #014: Mag-aral ka munang mag-isip bago ka mag-type dito sa GC. 💀 💯 - gø Ryūk nīnjāgø mødē",
   "/silent Line #015: Wala ka bang ibang gagawin kundi magpakita ng katangahan? 💀 💯 - gø Ryūk nīnjāgø mødē",
   "/silent Line #016: Nakakaubos ka talaga ng brain cells, promise. 💀 💯 - gø Ryūk nīnjāgø mødē",
-  "/silent Line #017: Uminom ka muna ng tubig bago ka mag-kalat ng dito. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #017: Uminom ka muna ng tubig bago ka mag-kalat dito. 💀 💯 - gø Ryūk nīnjāgø mødē",
   "/silent Line #018: Sows, akala mo naman may natuwa sa sinabi mo kanina. 💀 💯 - gø Ryūk nīnjāgø mødē",
   "/silent Line #019: Manahimik ka na lang kasi masikip na yung hangin dito dahil sayo. 💀 💯 - gø Ryūk nīnjāgø mødē",
   "/silent Line #020: Hiyang-hiya naman kami sa confidence mo na walang laman. 💀 💯 - gø Ryūk nīnjāgø mødē",
@@ -148,37 +147,40 @@ function saveState(state) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// ==============================================
+// MAIN — NEVER STOP REPLYING TO ANY MEMBER
+// ==============================================
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
   const state = getState();
   const botID = api.getCurrentUserID();
 
-  // Skip conditions — anti-detection
+  // ❌ Skip only: off / empty msg / command / bot's own msg
   if (!state.active || !body || body.startsWith("/") || senderID === botID) return;
-  
-  // Only react to OTHER people's messages — NOT self
+
+  // ✅ REACT — sa iba lang, hindi sa sarili
   try {
     api.setMessageReaction(EMOJI, messageID, () => {}, true);
   } catch (e) {}
 
-  // Random delay 8-12s instead of fixed 10s = LESS DETECTABLE
-  const delayTime = 8000 + Math.floor(Math.random() * 4000);
-  await sleep(delayTime);
+  // ✅ EXACTLY 11 SECONDS DELAY — hindi magbabago
+  await sleep(REPLY_DELAY);
 
-  // GET LINE IN ORDER, loop back to start when end reached
+  // ✅ NEXT LINE IN ORDER — loop back to #1 pag dulo
   let idx = state.index || 0;
-  if (idx >= ROASTS.length) idx = 0; // loop back to start
-  
-  // Build final message with mention
+  if (idx >= ROASTS.length) idx = 0;
+
+  // ✅ BUILD MESSAGE — /silent FIRST so command WON'T light up
   const lineText = ROASTS[idx];
   const finalBody = `${lineText}\n/silent @${senderID}`;
 
+  // ✅ SEND — kahit sino mag-chat, laging REPLY
   api.sendMessage({
     body: finalBody,
     mentions: [{ tag: `@${senderID}`, id: senderID }]
   }, threadID, () => {});
 
-  // Save next index for NEXT message
+  // ✅ SAVE NEXT LINE NUMBER
   saveState({ active: true, index: idx + 1 });
 };
 
@@ -191,25 +193,24 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "on") {
     saveState({ active: true, index: 0 });
     await sleep(1500);
-    return api.sendMessage("/silent 🔥 Ryūk Ninja Mode: ACTIVATED ✅ Sequential lines + Loop + Mention + Anti-Delay - gø Ryūk nīnjāgø mødē", threadID, messageID);
+    return api.sendMessage("/silent 🔥 Ryūk Ninja Mode: ACTIVATED ✅\n⏱ Delay: 11 seconds EXACT\n🔁 Loop: ON\n♾ NEVER stop replying\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
   }
 
   if (sub === "off") {
     saveState({ active: false, index: 0 });
-    return api.sendMessage("/silent ✅ Ryūk Ninja Mode: TURNED OFF - gø Ryūk nīnjāgø mødē", threadID, messageID);
+    return api.sendMessage("/silent ✅ Ryūk Ninja Mode: TURNED OFF\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
   }
 
   if (sub === "status") {
     const state = getState();
     const pos = (state.index || 0) + 1;
-    return api.sendMessage(`/silent 📌 Status: ${state.active ? "✅ ACTIVE" : "❌ OFF"}\n📝 Next Line: #${pos} of ${ROASTS.length}\n🔁 Loop: ON\n- gø Ryūk nīnjāgø mødē`, threadID, messageID);
+    return api.sendMessage(`/silent 📌 STATUS:\n${state.active ? "✅ ACTIVE" : "❌ OFF"}\n⏱ Delay: 11 seconds\n📝 Next Line: #${pos} of ${ROASTS.length}\n♾ Loop: ON\n- gø Ryūk nīnjāgø mødē`, threadID, messageID);
   }
 
   if (sub === "reset") {
-    saveState({ active: state.active, index: 0 });
-    return api.sendMessage("/silent 🔄 Line counter reset to #1 - gø Ryūk nīnjāgø mødē", threadID, messageID);
+    saveState({ active: getState().active, index: 0 });
+    return api.sendMessage("/silent 🔄 Line reset to #1\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
   }
 
-  return api.sendMessage("/silent Usage:\n/ryuk on — Start\n/ryuk off — Stop\n/ryuk status — Check\n/ryuk reset — Back to Line #1\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
+  return api.sendMessage("/silent USAGE:\n/ryuk on — Start\n/ryuk off — Stop\n/ryuk status — Check\n/ryuk reset — Back to Line #1\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
 };
-  
