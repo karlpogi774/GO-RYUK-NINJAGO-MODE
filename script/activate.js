@@ -1684,7 +1684,7 @@ module.exports.run = async function ({ api, event, args }) {
     const ts = data.threadSettings[threadID] || {};
     return api.sendMessage(
       `📊 STATUS:\n` +
-      `Auto-reply: ${data.active ? "✅ ON — 12s delay" : "❌ OFF"}\n` +
+      `Auto-reply: ${data.active ? "✅ ON — 30s delay" : "❌ OFF"}\n` +
       `Group Name Lock: ${ts.lockNameOn ? "🔒 ON" : "🔓 OFF"}\n` +
       `Lines: ${data.roasts.length}`,
       threadID, messageID
@@ -1726,12 +1726,12 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (senderID === botID) return;
   if (body.trim().startsWith("/")) return;
 
-  // ✅ Auto-reply — 20 segundo delay
+  // ✅ Auto-reply — 30 segundo delay
   const data = loadData();
   if (!data.active) return;
 
   setTimeout(() => {
     const randomReply = data.roasts[Math.floor(Math.random() * data.roasts.length)];
     api.sendMessage(randomReply, threadID);
-  }, 20000);
+  }, 30000);
 };
