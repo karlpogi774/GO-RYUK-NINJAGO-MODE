@@ -3,13 +3,13 @@ const path = require("path");
 
 module.exports.config = {
   name: "activate",
-  version: "6.0.0-safe",
+  version: "6.1-safe",
   hasPermission: 0,
   credits: "sinzu - safe rewrite",
-  description: "Safe Tagalog fun roast - command only",
+  description: "Safe Tagalog fun roast - auto on/off",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/activate roast | /activate add <text> | /activate listlines | /activate status",
+  usages: "/activate on | off | roast | add <text> | listlines | status",
   cooldowns: 10
 };
 
@@ -29,7 +29,7 @@ function loadData() {
       return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
     }
   } catch {}
-  return { roasts: DEFAULT_ROASTS };
+  return { active: false, roasts: DEFAULT_ROASTS };
 }
 
 function saveData(data) {
@@ -42,7 +42,19 @@ module.exports.run = async function ({ api, event, args }) {
   const data = loadData();
   if (!data.roasts || data.roasts.length === 0) data.roasts = DEFAULT_ROASTS;
 
-  if (sub === "roast" || sub === "") {
+  if (sub === "on") {
+    data.active = true;
+    saveData(data);
+    return api.sendMessage("🔥 Auto-reply ON sa GC na to. Gamitin /activate off para i-stop.", threadID, messageID);
+  }
+
+  if (sub === "off") {
+    data.active = false;
+    saveData(data);
+    return api.sendMessage("✅ Auto-reply OFF na.", threadID, messageID);
+  }
+
+  if (sub === "roast") {
     const random = data.roasts[Math.floor(Math.random() * data.roasts.length)];
     return api.sendMessage(random, threadID, messageID);
   }
@@ -62,11 +74,22 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   if (sub === "status") {
-    return api.sendMessage(`Safe mode ON - command only, no auto reply. Lines: ${data.roasts.length}`, threadID, messageID);
+    return api.sendMessage(`Status: ${data.active ? "ON 🔥" : "OFF"} - Lines: ${data.roasts.length}`, threadID, messageID);
   }
 
   return api.sendMessage(
-    "Usage:\n/activate roast - random fun line\n/activate add <text> - add line\n/activate listlines - list lines\n/activate status",
+    "Usage:\n/activate on - auto reply ON\n/activate off - auto reply OFF\n/activate roast - random line\n/activate add <text> - add line\n/activate listlines - list lines\n/activate status",
     threadID, messageID
   );
+};
+
+module.exports.handleEvent = async function ({ api, event }) {
+  const { threadID, senderID, body, messageID } = event;
+  if (senderID === api.getCurrentUserID() || !body || body.startsWith("/")) return;
+
+  const data = loadData();
+  if (data.active !== true) return;
+
+  const random = data.roasts[Math.floor(Math.random() * data.roasts.length)];
+  return api.sendMessage(random, threadID, messageID);
 };
