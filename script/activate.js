@@ -3,17 +3,18 @@ const path = require("path");
 
 module.exports.config = {
   name: "activate",
-  version: "7.1-safe-typing",
-  hasPermission: 1,
-  credits: "sinzu - safe rewrite",
-  description: "Safe roast + group name protect + nickname + typing",
+  version: "7.0-full",
+  hasPermission: 0,
+  credits: "sinzu + ryuk edit",
+  description: "Auto-reply + Group Name Lock + Mass Nickname Set",
   usePrefix: true,
-  commandCategory: "Fun",
-  usages: "/activate on | off | roast | setgc | cleargc | setnick | setnickall | status",
-  cooldowns: 10
+  commandCategory: "Utility",
+  usages: "/activate on | off | status | setname <group name> | lockname on/off | setnick <nickname> | setnickall <nickname> | resetnickall",
+  cooldowns: 5
 };
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
+
 const DEFAULT_ROASTS = [
   "Lods pahinga ka muna, masyado ka nang main character ngayong araw 😆",
   "Sige lang lods, confident ka eh, tuloy mo lang yan",
@@ -28,123 +29,228 @@ function loadData() {
       return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
     }
   } catch {}
-  return { active: false, roasts: DEFAULT_ROASTS, groupLocks: {} };
+  return {
+    active: false,
+    roasts: DEFAULT_ROASTS,
+    lockedGroupName: null,
+    lockNameEnabled: false,
+    defaultNickname: null,
+    threadSettings: {}
+  };
 }
+
 function saveData(data) {
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
 
-// function para may typing indicator
-function sendWithTyping(api, msg, threadID, messageID) {
-  api.sendTypingIndicator(threadID, (err) => {
-    setTimeout(() => {
-      api.sendMessage(msg, threadID, messageID);
-    }, 1500); // 1.5 sec typing
-  });
-}
-
+// --- COMMAND HANDLER ---
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
-  const data = loadData();
-  if (!data.roasts) data.roasts = DEFAULT_ROASTS;
-  if (!data.groupLocks) data.groupLocks = {};
-
   const sub = (args[0] || "").toLowerCase();
+  const data = loadData();
+  if (!data.roasts || data.roasts.length === 0) data.roasts = DEFAULT_ROASTS;
+
+  // Check admin for sensitive commands
+  const isAdmin = (await api.getThreadInfo(threadID)).adminIDs.includes(senderID) || senderID === api.getCurrentUserID();
 
   if (sub === "on") {
-    data.active = true; saveData(data);
-    return sendWithTyping(api, "🔥 Auto-reply ON sa GC na to.", threadID, messageID);
+    data.active = true;
+    saveData(data);
+    return api.sendMessage("🔥 Auto-reply ON sa GC na to. Gamitin /activate off para i-stop.", threadID, messageID);
   }
+
   if (sub === "off") {
-    data.active = false; saveData(data);
-    return sendWithTyping(api, "✅ Auto-reply OFF na.", threadID, messageID);
+    data.active = false;
+    saveData(data);
+    return api.sendMessage("✅ Auto-reply OFF na.", threadID, messageID);
   }
+
+  // SET & LOCK GROUP NAME
+  if (sub === "setname") {
+    if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
+    const newName = args.slice(1).join(" ");
+    if (!newName) return api.sendMessage("Usage: /activate setname <Group Name>", threadID, messageID);
+    
+    data.lockedGroupName = newName;
+    data.lockNameEnabled = true;
+    if (!data.threadSettings[threadID]) data.threadSettings[threadID] = {};
+    data.threadSettings[threadID].lockedName = newName;
+    data.threadSettings[threadID].lockNameOn = true;
+    
+    saveData(data);
+    await api.setTitle(newName, threadID);
+    return api.sendMessage(`✅ Group name set at LOCKED:「${newName}」\nKapag may nagpalit, ibabalik ko agad to.`, threadID, messageID);
+  }
+
+  if (sub === "lockname") {
+    if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
+    const mode = (args[1] || "").toLowerCase();
+    if (mode === "on") {
+      data.lockNameEnabled = true;
+      if (!data.threadSettings[threadID]) data.threadSettings[threadID] = {};
+      data.threadSettings[threadID].lockNameOn = true;
+      saveData(data);
+      return api.sendMessage("🔒 Group Name Lock: ON", threadID, messageID);
+    }
+    if (mode === "off") {
+      data.lockNameEnabled = false;
+      if (data.threadSettings[threadID]) data.threadSettings[threadID].lockNameOn = false;
+      saveData(data);
+      return api.sendMessage("🔓 Group Name Lock: OFF", threadID, messageID);
+    }
+    return api.sendMessage("Usage: /activate lockname on | off", threadID, messageID);
+  }
+
+  // SET NICKNAME TO ALL MEMBERS
+  if (sub === "setnickall") {
+    if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
+    const nick = args.slice(1).join(" ");
+    if (!nick) return api.sendMessage("Usage: /activate setnickall <Nickname>\nExample: /activate setnickall ⟪RYUK⟫ {name}", threadID, messageID);
+    
+    data.defaultNickname = nick;
+    if (!data.threadSettings[threadID]) data.threadSettings[threadID] = {};
+    data.threadSettings[threadID].defaultNick = nick;
+    saveData(data);
+
+    const threadInfo = await api.getThreadInfo(threadID);
+    const members = threadInfo.participants;
+    let success = 0, fail = 0;
+
+    api.sendMessage(`⏳ Nagseset ng nickname sa ${members.length} members...`, threadID);
+
+    for (const member of members) {
+      try {
+        if (member.userID !== api.getCurrentUserID()) {
+          let finalNick = nick.replace(/{name}/g, member.name || "Member");
+          await api.changeNickname(finalNick, threadID, member.userID);
+          success++;
+        }
+      } catch (e) { fail++; }
+    }
+
+    return api.sendMessage(`✅ Tapos na!\n✅ Success: ${success}\n❌ Failed: ${fail}\nTemplate: "${nick}"`, threadID, messageID);
+  }
+
+  // SET NICKNAME TO SPECIFIC PERSON
+  if (sub === "setnick") {
+    if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
+    const nick = args.slice(1).join(" ");
+    if (!nick) return api.sendMessage("Usage: /activate setnick <Nickname> — reply to someone's message to set theirs", threadID, messageID);
+    
+    if (event.messageReply && event.messageReply.senderID) {
+      await api.changeNickname(nick, threadID, event.messageReply.senderID);
+      return api.sendMessage(`✅ Nickname na-set: ${nick}`, threadID, messageID);
+    }
+    return api.sendMessage("⚠️ Reply ka muna sa message ng taong papalitan mo ng nickname, tapos gamitin ang command.", threadID, messageID);
+  }
+
+  // RESET ALL NICKNAMES
+  if (sub === "resetnickall") {
+    if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
+    const threadInfo = await api.getThreadInfo(threadID);
+    const members = threadInfo.participants;
+    let success = 0, fail = 0;
+
+    api.sendMessage(`⏳ Nirereset ang nickname ng ${members.length} members...`, threadID);
+
+    for (const member of members) {
+      try {
+        if (member.userID !== api.getCurrentUserID()) {
+          await api.changeNickname("", threadID, member.userID);
+          success++;
+        }
+      } catch (e) { fail++; }
+    }
+
+    return api.sendMessage(`✅ Reset tapos!\n✅ Success: ${success}\n❌ Failed: ${fail}`, threadID, messageID);
+  }
+
   if (sub === "roast") {
     const random = data.roasts[Math.floor(Math.random() * data.roasts.length)];
-    return sendWithTyping(api, random, threadID, messageID);
+    return api.sendMessage(random, threadID, messageID);
   }
+
   if (sub === "add") {
     const text = args.slice(1).join(" ");
-    if (!text) return sendWithTyping(api, "Lagay ka ng text: /activate add <text>", threadID, messageID);
-    data.roasts.push(text); saveData(data);
-    return sendWithTyping(api, `Na-add: "${text}"`, threadID, messageID);
-  }
-  if (sub === "setgc") {
-    const name = args.slice(1).join(" ");
-    if (!name) return sendWithTyping(api, "Usage: /activate setgc <group name>", threadID, messageID);
-    data.groupLocks[threadID] = name; saveData(data);
-    api.sendTypingIndicator(threadID, () => {
-      setTimeout(() => {
-        api.setTitle(name, threadID, (err) => {
-          if (err) return api.sendMessage("Di ko ma-set, need admin yung bot.", threadID, messageID);
-          api.sendMessage(`🔒 Group name na-set sa: "${name}"`, threadID, messageID);
-        });
-      }, 1200);
-    });
-    return;
-  }
-  if (sub === "cleargc") {
-    delete data.groupLocks[threadID]; saveData(data);
-    return sendWithTyping(api, "🔓 Group name lock tinanggal na.", threadID, messageID);
-  }
-  if (sub === "setnick") {
-    const nick = args.slice(1).join(" ");
-    if (!nick) return sendWithTyping(api, "Usage: /activate setnick <nickname>", threadID, messageID);
-    api.sendTypingIndicator(threadID, () => {
-      setTimeout(() => {
-        api.changeNickname(nick, threadID, senderID, (err) => {
-          if (err) return api.sendMessage("Di ko ma-set nickname, need admin.", threadID, messageID);
-          api.sendMessage(`Nickname mo set sa: ${nick}`, threadID, messageID);
-        });
-      }, 1200);
-    });
-    return;
-  }
-  if (sub === "setnickall") {
-    const nick = args.slice(1).join(" ");
-    if (!nick) return sendWithTyping(api, "Usage: /activate setnickall <nickname>", threadID, messageID);
-    const info = await api.getThreadInfo(threadID);
-    api.sendMessage(`Sige set ko ${Math.min(info.participantIDs.length, 20)} members, may typing delay para di ma-detect...`, threadID);
-    let count = 0;
-    for (const userID of info.participantIDs) {
-      await new Promise(r => setTimeout(r, 1500));
-      api.sendTypingIndicator(threadID);
-      api.changeNickname(nick, threadID, userID);
-      count++;
-      if (count >= 20) break;
-    }
-    return sendWithTyping(api, `✅ Done ${count} members: ${nick}`, threadID, messageID);
+    if (!text) return api.sendMessage("Lagay ka ng text: /activate add <text>", threadID, messageID);
+    data.roasts.push(text);
+    saveData(data);
+    return api.sendMessage(`Na-add: "${text}"`, threadID, messageID);
   }
 
-  return sendWithTyping(api, "Usage:\n/activate on/off\n/activate roast\n/activate setgc <name>\n/activate cleargc\n/activate setnick <name>\n/activate setnickall <name>", threadID, messageID);
+  if (sub === "listlines") {
+    let msg = `Lines (${data.roasts.length}):\n\n`;
+    data.roasts.forEach((l, i) => msg += `${i+1}. ${l}\n`);
+    return api.sendMessage(msg, threadID, messageID);
+  }
+
+  if (sub === "status") {
+    const ts = data.threadSettings[threadID] || {};
+    return api.sendMessage(
+      `📊 STATUS:\n` +
+      `Auto-reply: ${data.active ? "ON 🔥" : "OFF"}\n` +
+      `Group Name Lock: ${ts.lockNameOn ? "🔒 ON → " + (ts.lockedName || data.lockedGroupName) : "🔓 OFF"}\n` +
+      `Default Nick: ${ts.defaultNick || data.defaultNickname || "Wala"}\n` +
+      `Lines: ${data.roasts.length}`,
+      threadID, messageID
+    );
+  }
+
+  return api.sendMessage(
+    "📖 Usage Guide:\n\n" +
+    "🔧 General:\n" +
+    "/activate on/off — start/stop auto-reply\n" +
+    "/activate status — show current settings\n\n" +
+    "🏷️ Group Name:\n" +
+    "/activate setname <Name> — set at lock group name\n" +
+    "/activate lockname on/off — i-on/off ang pagbabalik ng name\n\n" +
+    "👤 Nicknames:\n" +
+    "/activate setnickall <Name> — i-set sa LAHAT ng member\n" +
+    "   pwede gamitin: {name} = tunay na pangalan nila\n" +
+    "   Example: ⟪RYUK⟫ {name}\n" +
+    "/activate setnick <Name> — reply sa tao tapos set name\n" +
+    "/activate resetnickall — alisin lahat ng nickname\n\n" +
+    "💬 Auto-reply:\n" +
+    "/activate roast — send random line\n" +
+    "/activate add <text> — add reply line\n" +
+    "/activate listlines — view all lines",
+    threadID, messageID
+  );
 };
 
+// --- EVENT HANDLER — Auto-reply + Group Name Protection ---
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID, logMessageType, logMessageData } = event;
-  if (senderID === api.getCurrentUserID()) return;
+  const botID = api.getCurrentUserID();
 
-  const data = loadData();
-
+  // --- GROUP NAME LOCK PROTECTION ---
   if (logMessageType === "log:thread-name") {
-    const locked = data.groupLocks ? data.groupLocks[threadID] : null;
-    if (locked && logMessageData && logMessageData.name !== locked) {
-      api.sendTypingIndicator(threadID, () => {
-        setTimeout(() => {
-          api.setTitle(locked, threadID);
-          api.sendMessage(`🔒 Binalik ko GC name sa: "${locked}"`, threadID);
-        }, 1500);
-      });
+    const data = loadData();
+    const ts = data.threadSettings[threadID] || {};
+    const lockedName = ts.lockedName || data.lockedGroupName;
+    const shouldLock = ts.lockNameOn || data.lockNameEnabled;
+
+    if (shouldLock && lockedName && logMessageData.name !== lockedName) {
+      setTimeout(async () => {
+        try {
+          await api.setTitle(lockedName, threadID);
+          api.sendMessage(`🔒 Hindi pwedeng palitan ang Group Name! Ibinalik ko na sa:「${lockedName}」`, threadID);
+        } catch (e) {}
+      }, 800);
     }
     return;
   }
 
-  if (!body || body.startsWith("/")) return;
+  // SKIP bot messages & commands
+  if (senderID === botID || !body || body.startsWith("/")) return;
+
+  // --- AUTO-REPLY TO ALL MEMBERS ---
+  const data = loadData();
   if (data.active !== true) return;
 
-  const random = data.roasts[Math.floor(Math.random() * data.roasts.length)];
-  api.sendTypingIndicator(threadID, () => {
-    setTimeout(() => {
-      api.sendMessage(random, threadID, messageID);
-    }, 1300);
-  });
+  // Small delay para hindi mukhang bot agad
+  setTimeout(() => {
+    const random = data.roasts[Math.floor(Math.random() * data.roasts.length)];
+    api.sendMessage(random, threadID);
+  }, 600 + Math.floor(Math.random() * 400));
 };
