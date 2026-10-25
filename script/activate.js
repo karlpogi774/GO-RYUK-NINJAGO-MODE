@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "activate",
-  version: "7.0-full",
+  version: "7.1-full+typing",
   hasPermission: 0,
   credits: "sinzu + ryuk edit",
-  description: "Auto-reply + Group Name Lock + Mass Nickname Set",
+  description: "Auto-reply + Group Name Lock + Mass Nickname Set + Typing Indicator",
   usePrefix: true,
   commandCategory: "Utility",
   usages: "/activate on | off | status | setname <group name> | lockname on/off | setnick <nickname> | setnickall <nickname> | resetnickall",
@@ -50,7 +50,6 @@ module.exports.run = async function ({ api, event, args }) {
   const data = loadData();
   if (!data.roasts || data.roasts.length === 0) data.roasts = DEFAULT_ROASTS;
 
-  // Check admin for sensitive commands
   const isAdmin = (await api.getThreadInfo(threadID)).adminIDs.includes(senderID) || senderID === api.getCurrentUserID();
 
   if (sub === "on") {
@@ -65,7 +64,6 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("✅ Auto-reply OFF na.", threadID, messageID);
   }
 
-  // SET & LOCK GROUP NAME
   if (sub === "setname") {
     if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
     const newName = args.slice(1).join(" ");
@@ -101,7 +99,6 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("Usage: /activate lockname on | off", threadID, messageID);
   }
 
-  // SET NICKNAME TO ALL MEMBERS
   if (sub === "setnickall") {
     if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
     const nick = args.slice(1).join(" ");
@@ -131,7 +128,6 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage(`✅ Tapos na!\n✅ Success: ${success}\n❌ Failed: ${fail}\nTemplate: "${nick}"`, threadID, messageID);
   }
 
-  // SET NICKNAME TO SPECIFIC PERSON
   if (sub === "setnick") {
     if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
     const nick = args.slice(1).join(" ");
@@ -144,7 +140,6 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("⚠️ Reply ka muna sa message ng taong papalitan mo ng nickname, tapos gamitin ang command.", threadID, messageID);
   }
 
-  // RESET ALL NICKNAMES
   if (sub === "resetnickall") {
     if (!isAdmin) return api.sendMessage("❌ Admin lang pwede gamitin to.", threadID, messageID);
     const threadInfo = await api.getThreadInfo(threadID);
@@ -218,12 +213,11 @@ module.exports.run = async function ({ api, event, args }) {
   );
 };
 
-// --- EVENT HANDLER — Auto-reply + Group Name Protection ---
+// --- EVENT HANDLER — Auto-reply + Group Name Protection + TYPING INDICATOR ---
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID, logMessageType, logMessageData } = event;
   const botID = api.getCurrentUserID();
 
-  // --- GROUP NAME LOCK PROTECTION ---
   if (logMessageType === "log:thread-name") {
     const data = loadData();
     const ts = data.threadSettings[threadID] || {};
@@ -241,16 +235,22 @@ module.exports.handleEvent = async function ({ api, event }) {
     return;
   }
 
-  // SKIP bot messages & commands
   if (senderID === botID || !body || body.startsWith("/")) return;
 
-  // --- AUTO-REPLY TO ALL MEMBERS ---
   const data = loadData();
   if (data.active !== true) return;
 
-  // Small delay para hindi mukhang bot agad
+  const typingTime = 1500 + Math.floor(Math.random() * 1500);
+
+  api.sendTypingIndicator(threadID);
+
+  const typingInterval = setInterval(() => {
+    api.sendTypingIndicator(threadID);
+  }, 3000);
+
   setTimeout(() => {
+    clearInterval(typingInterval);
     const random = data.roasts[Math.floor(Math.random() * data.roasts.length)];
     api.sendMessage(random, threadID);
-  }, 600 + Math.floor(Math.random() * 400));
+  }, typingTime);
 };
