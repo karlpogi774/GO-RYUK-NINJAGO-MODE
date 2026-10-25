@@ -3,13 +3,13 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "10.0.0",
+  version: "11.0.0",
   hasPermission: 0,
-  credits: "sinzu & Gemini",
-  description: "Ryuk Bot with 10s delay, 😆 reaction, /silent prefix, user mention, and 999 unique normal roast lines.",
+  credits: "sinzu & Gemini + Ryūk Ninja Mode",
+  description: "Ryūk Bot — Sequential loop lines, /silent, mention, reacts to others, anti-detect",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/ryuk on | off | status",
+  usages: "/ryuk on | off | status | reset",
   cooldowns: 5
 };
 
@@ -23,194 +23,112 @@ const ADMIN_UIDS = [
 const DATA_PATH = path.join(__dirname, "ryuk_state.json");
 const EMOJI = "😆";
 
-// 999 UNIQUE NORMAL ROAST LINES WITH /silent
+// ==============================================
+// SEQUENTIAL LINES — loops start → end → start
+// EVERY LINE FORMAT: /silent Line #XXX: TEXT 💀 💯 @UID
+// EVERY LINE ENDS WITH: - gø Ryūk nīnjāgø mødē
+// ==============================================
 const ROASTS = [
-  "/silent Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
-  "/silent Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣",
-  "/silent Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
-  "/silent Sino nagtanong sa'yo? Lakas maka-main character ah.",
-  "/silent Bro, isip muna bago pindot ng send button, napapahalata ka eh.",
-  "/silent Sana bago ka nag-text, nag-isip ka muna ng limang beses.",
-  "/silent Quiet ka na lang muna lods, nauubusan na kami ng patience sa'yo.",
-  "/silent Yung utak mo parang data connection, laging slow at nawawala.",
-  "/silent Ang ingay mo na naman, wala ka namang ambag.",
-  "/silent Sino bang niloloko mo dito? Sarili mo lang naman.",
-  "/silent Pilit na pilit yung hirit mo, ulitin mo sa iba baka sakaling tumawa.",
-  "/silent May award ka ba sa pagiging epal? Kasi sure win ka.",
-  "/silent Mag-aral ka munang mag-isip bago ka mag-type dito.",
-  "/silent Wala ka bang ibang gagawin kundi magpakita ng katangahan?",
-  "/silent Nakakaubos ka ng brain cells, promise.",
-  "/silent Uminom ka muna ng tubig bago ka mag-kalat dito.",
-  "/silent Sows, akala mo naman may natuwa sa sinabi mo.",
-  "/silent Manahimik ka na lang kasi masikip na yung hangin dito sa GC.",
-  "/silent Hiyang-hiya naman kami sa confidence mo na walang laman.",
-  "/silent Ulitin mo nga 'yan, pero sa harap ng salamin ha.",
-  "/silent Hindi ka nakakatawa, nakakaawa ka na.",
-  "/silent Lakas ng trip mo ah, tinaasan mo pa yung standard ng kapeng mapait.",
-  "/silent Huwag ka nang umepal kung wala ka namang ibubuga.",
-  "/silent Parang kang sirang plaka, paulit-ulit na walang kwenta.",
-  "/silent Huwag mo nang ipilit, halatang wala kang naitulong.",
-  "/silent Napaka-ingay mo naman, wala ka namang sustansya.",
-  "/silent Nakakairita na yung presensya mo dito sa totoo lang.",
-  "/silent Wala ka bang ibang libangan bukod sa pagpapansin?",
-  "/silent Ayan ka na naman sa mga hirit mong walang kwenta.",
-  "/silent Mag-off ka na muna ng data, masisira lang araw namin sa'yo.",
-  "/silent Akala mo siguro cool ka kapag ganyan mga banat mo?",
-  "/silent Subukan mo kayang tumahimik kahit isang araw lang?",
-  "/silent Nakakaawa na yung pagpapansin mo sa totoo lang.",
-  "/silent Wala ka bang ibang masabi kundi 'yan?",
-  "/silent Ang sakit sa ulo ng mga pinagsasabi mo.",
-  "/silent Tumigil ka na bago ka pa masabihan ng masakit.",
-  "/silent Wala ka nang mapapala sa pinagagawa mo ngayon.",
-  "/silent Isang malaking ewan sa'yo.",
-  "/silent Sino bang nagturo sa'yong mag-chat ng ganyan?",
-  "/silent Huwag ka nang umasa na may matutuwa sa'yo.",
-  "/silent Napakalakas ng loob mong mag-ingay dito.",
-  "/silent Magtago ka na lang sa lungga mo.",
-  "/silent Wala ka kwenta kausap.",
-  "/silent Paulit-ulit na lang yung mga pinagsasabi mo.",
-  "/silent Hindi nakakagulat na ganyan ka mag-isip.",
-  "/silent Bakit ba nandito ka pa sa GC na ito?",
-  "/silent Wala ka namang naitulong kundi bwisitin kami.",
-  "/silent Isip-isip din pag may time, hindi puro dada.",
-  "/silent Nakakarindi na boses o chats mo.",
-  "/silent Ang galing mo talagang magtapon ng oras.",
-  "/silent Wala ka bang ibang alam kundi manggulo?",
-  "/silent Tumigil ka na, wala namang natutuwa.",
-  "/silent Sarap mong i-kick dito sa totoo lang.",
-  "/silent Huwag ka nang mag-ilusyon na may bilib sa'yo.",
-  "/silent Napaka-feelingero mo naman masyado.",
-  "/silent Uwi na, gabi na, nagkakalat ka lang.",
-  "/silent Wala ka talagang ka-pounce-pounce sa katawan.",
-  "/silent Puro ka satsat, wala namang laman.",
-  "/silent Sawa na kami sa mukha at chats mo.",
-  "/silent Mag-desisyon ka nang magbago kahit ngayon lang.",
-  "/silent Hindi ka naman kawalan dito.",
-  "/silent Bakit ba ang hilig mong magpakahiya sa sarili mo?",
-  "/silent Wala ka nang pagbabago, pareho pa rin.",
-  "/silent Ang hirap mong intindihin kasi puro sabaw.",
-  "/silent Mag-isip ka muna bago mo pindutin yan.",
-  "/silent Nakakairita na yung mga banat mo.",
-  "/silent Wala ka bang ibang hobby bukod diyan?",
-  "/silent Sobra na yung kayabangan mo ha.",
-  "/silent Wala ka namang ibubuga sa totoo lang.",
-  "/silent Nakakasawa na yung mga gimik mo.",
-  "/silent Tumahimik ka na lang para may silbi ka.",
-  "/silent Ang corny mo sobra, promise.",
-  "/silent Huwag ka nang umapoy dyan sa init ng ulo mo.",
-  "/silent Wala ka bang ibang alam sabihin?",
-  "/silent Nakakaantok yung mga pinagsasabi mo.",
-  "/silent Magpahinga ka na lang kaysa magkalat.",
-  "/silent Hindi nakakabilib yung ganyan mo.",
-  "/silent Ang layo ng narating ng katangahan mo.",
-  "/silent Huwag kang masyadong mayabang kung wala kang maipakita.",
-  "/silent Sino bang niloloko mo dito?",
-  "/silent Napaka-walang kwenta naman ng hirit na yan.",
-  "/silent Mag-focus ka na lang sa sarili mo.",
-  "/silent Wala ka talagang mapapala dyan.",
-  "/silent Ang ingay-ingay mo, wala ka namang kwenta.",
-  "/silent Lumipat ka na lang ng ibang GC.",
-  "/silent Huwag ka nang magmatigas kung mali ka naman.",
-  "/silent Sarap mong tapunan ng malamig na tubig.",
-  "/silent Wala ka talagang pakialam sa paligid mo no?",
-  "/silent Nakakainis na yung pagka-epal mo.",
-  "/silent Magtino ka naman kahit sandali lang.",
-  "/silent Wala ka bang ibang topic kundi sarili mo?",
-  "/silent Ang galing mo talagang bwisitin kami.",
-  "/silent Huwag ka nang umasa pa.",
-  "/silent Napaka-epal mo sa totoo lang.",
-  "/silent Wala ka na bang ibang masabi?",
-  "/silent Ang boring mo kasama at kausap.",
-  "/silent Mag-isip ka nga ng matino kahit minsan.",
-  "/silent Umay na umay na kami sa'yo.",
-  "/silent Wala kang mararating sa ugali mong yan.",
-  "/silent Huwag kang masyadong magmamagaling.",
-  "/silent Ang sakit mo sa bangs.",
-  "/silent Wala ka talagang kwenta kasama.",
-  "/silent Tumigil ka na sa kahibangan mo.",
-  "/silent Nakakahiya yung pinaggagawa mo.",
-  "/silent Mag-sorry ka na lang sa mga naabala mo.",
-  "/silent Wala ka bang hiya sa katawan?",
-  "/silent Ang kapal ng mukha mo para mag-chat pa.",
-  "/silent Huwag mo kaming idamay sa katangahan mo.",
-  "/silent Wala kang kwentang kasama sa GC.",
-  "/silent Ang sarap mong i-block sa totoo lang.",
-  "/silent Magbago ka na habang maaga pa.",
-  "/silent Wala ka talagang modo sa katawan.",
-  "/silent Nakakadisappoint ka naman.",
-  "/silent Huwag ka nang magpapakita dito.",
-  "/silent Ang sama ng ugali mo.",
-  "/silent Wala kang silbi dito.",
-  "/silent Mag-isa ka na lang dyan.",
-  "/silent Hindi ka na natuto no?",
-  "/silent Ang tigas ng ulo mo.",
-  "/silent Wala ka talagang pakialam sa iba.",
-  "/silent Nakakainis ka na sobra.",
-  "/silent Magtigil ka na habang maaga pa.",
-  "/silent Wala ka nang pagbabago.",
-  "/silent Ang galing mo talagang mambwisit.",
-  "/silent Huwag ka na ngang mag-ingay.",
-  "/silent Wala ka namang kwenta.",
-  "/silent Magdusa ka dyan sa katangahan mo.",
-  "/silent Ang sarap mong batukan.",
-  "/silent Wala ka talagang kuwenta kausap.",
-  "/silent Nakakarindi ka na.",
-  "/silent Mag-isip ka naman.",
-  "/silent Wala ka bang konsensya?",
-  "/silent Ang panget ng ugali mo.",
-  "/silent Wala kang mararating.",
-  "/silent Mag-isa ka.",
-  "/silent Huwag kang epal.",
-  "/silent Wala kang silbi.",
-  "/silent Ang arte mo.",
-  "/silent Wala kang kwenta.",
-  "/silent Magtino ka.",
-  "/silent Wala kang kuwenta.",
-  "/silent Ang sama mo.",
-  "/silent Wala kang hiya.",
-  "/silent Magbago ka.",
-  "/silent Wala kang modo.",
-  "/silent Ang panget mo.",
-  "/silent Wala kang isip.",
-  "/silent Mag-isip ka.",
-  "/silent Wala kang bayag.",
-  "/silent Ang duwag mo.",
-  "/silent Wala kang laban.",
-  "/silent Magtago ka na.",
-  "/silent Ang bobo mo.",
-  "/silent Wala kang alam.",
-  "/silent Ang hina ng ulo mo.",
-  "/silent Wala kang mararating kailanman.",
-  "/silent Mag-aral kang mabuti muna.",
-  "/silent Ang bagal ng pick-up mo.",
-  "/silent Magbasa ka ng libro.",
-  "/silent Ang sabaw ng utak mo.",
-  "/silent Mag-isip ka bago magsalita.",
-  "/silent Ang kitid ng pananaw mo.",
-  "/silent Magpakatino ka.",
-  "/silent Ang bobo ng hirit mo.",
-  "/silent Mag-training ka muna.",
-  "/silent Ang tanga ng desisyon mo.",
-  "/silent Mag-reflect ka sa nagawa mo.",
-  "/silent Ang sabaw mo ngayon.",
-  "/silent Mag-isa ka na lang dyan habang buhay.",
-  // Generating completely distinct natural varied lines to hit the 999 requirement cleanly
-  ...Array.from({ length: 850 }, (_, i) => {
-    const list = [
-      `Nakaka-stress kausap ang mga tulad mo na walang ambag sa lipunan.`,
-      `Huwag masyadong magmamalaki kung hanggang dyan lang din naman ang kaya mo.`,
-      `Wala ka bang ibang mapag-abalahan bukod sa paggawa ng kalokohan dito?`,
-      `Ang galing mong manghusga pero sarili mo hindi mo kayang ituwid.`,
-      `Mag-ayos ka nga ng buhay mo bago ka mangialam sa iba.`,
-      `Puro ka dada walang gawa, parang sirang plaka na paulit-ulit.`,
-      `Hindi mo ba alam na nakakairita na yang pinagsasabi mo?`,
-      `Tumahimik ka na lang kaysa magpakalat ng kamangmangan dito.`,
-      `Ayan na naman tayo sa mga banat mong walang kakwenta-kwenta.`,
-      `Sino bang niloloko mo dito aber? Sarili mo lang naman.`
-    ];
-    const text = list[i % list.length];
-    return `/silent Line #${i + 150}: ${text} 💀 💯`;
-  })
+  "/silent Line #001: Ang galing mong manghusga pero sarili mo hindi mo kayang ituwid. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #002: Luh, nag-type pa talaga siya oh, akala mo naman may punto. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #003: Paki-delete na lang 'to bago pa makita ng iba, nakakahiya sayo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #004: Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #005: Sino nagtanong sa'yo? Lakas maka-main character ah. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #006: Isip muna bago pindot ng send button, napapahalata ka eh. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #007: Sana bago ka nag-text, nag-isip ka muna ng limang beses. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #008: Quiet ka na lang muna lods, nauubusan na kami ng pasensya sa'yo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #009: Yung utak mo parang data connection, laging mabagal at nawawala. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #010: Ang ingay mo na naman, wala ka namang ambag dito. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #011: Sino bang niloloko mo dito? Sarili mo lang naman. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #012: Pilit na pilit yung hirit mo, ulitin mo sa iba baka sakaling tumawa sila. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #013: May award ka ba sa pagiging epal? Kasi sure panalo ka na. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #014: Mag-aral ka munang mag-isip bago ka mag-type dito sa GC. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #015: Wala ka bang ibang gagawin kundi magpakita ng katangahan? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #016: Nakakaubos ka talaga ng brain cells, promise. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #017: Uminom ka muna ng tubig bago ka mag-kalat ng dito. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #018: Sows, akala mo naman may natuwa sa sinabi mo kanina. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #019: Manahimik ka na lang kasi masikip na yung hangin dito dahil sayo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #020: Hiyang-hiya naman kami sa confidence mo na walang laman. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #021: Ulitin mo nga 'yan, pero sa harap ng salamin ha. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #022: Hindi ka nakakatawa, nakakaawa ka na talaga. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #023: Lakas ng trip mo ah, tinaasan mo pa yung standard ng kapeng mapait. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #024: Huwag ka nang umepal kung wala ka namang maibubuga. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #025: Parang kang sirang plaka, paulit-ulit na walang kwenta. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #026: Huwag mo nang ipilit, halatang wala kang naitulong dito. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #027: Napaka-ingay mo naman, wala ka namang sustansya sa utak. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #028: Nakakairita na yung presensya mo dito sa totoo lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #029: Wala ka bang ibang libangan bukod sa pagpapansin? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #030: Ayan ka na naman sa mga hirit mong walang saysay. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #031: Mag-off ka na muna ng data, masisira lang araw namin dahil sayo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #032: Akala mo siguro cool ka kapag ganyan mga banat mo? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #033: Subukan mo kayang tumahimik kahit isang araw lang ha. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #034: Nakakaawa na yung pagpapansin mo sa totoo lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #035: Wala ka bang ibang masabi kundi paulit-ulit na 'yan? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #036: Ang sakit sa ulo ng mga pinagsasabi mo palagi. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #037: Tumigil ka na bago ka pa masabihan ng masakit na salita. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #038: Wala ka nang mapapala sa pinagagawa mo ngayon. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #039: Isang malaking ewan talaga sa'yo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #040: Sino bang nagturo sa'yong mag-chat ng ganyan katanga? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #041: Huwag ka nang umasa na may matutuwa sa mga sinasabi mo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #042: Napakalakas ng loob mong mag-ingay dito sa GC. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #043: Magtago ka na lang sa lungga mo kung saan tahimik. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #044: Wala ka talagang kwenta kausap, sorry na lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #045: Paulit-ulit na lang yung mga pinagsasabi mo araw-araw. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #046: Hindi nakakagulat na ganyan ka mag-isip palagi. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #047: Bakit ba nandito ka pa sa GC na ito kung wala kang ambag? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #048: Wala ka namang naitulong kundi bwisitin kaming lahat. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #049: Isip-isip din pag may time, hindi puro satsat lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #050: Nakakarindi na mga sinasabi mo, seryoso na. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #051: Ang galing mo talagang mag-aksaya ng oras namin. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #052: Wala ka bang ibang alam kundi manggulo lang dito? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #053: Tumigil ka na, wala namang natutuwa sa'yo dito. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #054: Sarap mong i-kick dito sa totoo lang, wag na lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #055: Huwag ka nang mag-ilusyon na may bilib sa mga sinasabi mo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #056: Napaka-feelingero mo naman masyado ngayon. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #057: Uwi na, gabi na, nagkakalat ka lang dito sa GC. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #058: Wala ka talagang silbi dito, tanggapin mo na. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #059: Puro ka salita, wala namang gawa — ganyan ka palagi. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #060: Sawa na kami sa mga chats mo, totoo naman eh. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #061: Mag-desisyon ka nang magbago kahit ngayon lang naman. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #062: Hindi ka naman kawalan dito sa GC natin eh. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #063: Bakit ba ang hilig mong magpakahiya sa sarili mo? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #064: Wala ka nang pagbabago, pareho ka pa rin dati. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #065: Ang hirap mong intindihin kasi puro sabaw utak mo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #066: Mag-isip ka muna bago mo pindutin yung send button ha. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #067: Nakakairita na yung mga banat mo, seryoso na. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #068: Wala ka bang ibang hobby bukod sa mang-inis ng iba? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #069: Sobra na yung kayabangan mo ha, dahan-dahan lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #070: Wala ka namang maipagmamalaki sa totoo lang eh. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #071: Nakakasawa na yung mga gimik mo araw-araw na lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #072: Tumahimik ka na lang para kahit paano may silbi ka. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #073: Ang corny mo sobra, promise hindi nakakatawa. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #074: Huwag ka nang umapoy dyan sa init ng ulo mo ha. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #075: Wala ka bang ibang alam sabihin kundi paulit-ulit? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #076: Nakakaantok yung mga pinagsasabi mo palagi eh. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #077: Magpahinga ka na lang kaysa magkalat dito sa GC. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #078: Hindi nakakabilib yung ganyan mong ugali ha. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #079: Ang layo na ng narating ng katangahan mo talaga. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #080: Huwag kang masyadong mayabang kung wala kang maipakita. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #081: Sino bang niloloko mo dito sa harap namin lahat? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #082: Napaka-walang kwenta naman ng hirit na 'yan kanina. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #083: Mag-focus ka na lang sa sarili mo kaysa sa iba. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #084: Wala ka talagang mapapala dyan sa ginagawa mo. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #085: Ang ingay-ingay mo, wala ka namang kwenta kausap. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #086: Lumipat ka na lang ng ibang GC kung pwede naman. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #087: Huwag ka nang magmatigas kung mali ka naman eh. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #088: Sarap mong tapunan ng malamig na tubig ngayon. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #089: Wala ka talagang pakialam sa paligid mo noh? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #090: Nakakainis na yung pagka-epal mo, seryoso na. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #091: Magtino ka naman kahit sandali lang sa maghapon. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #092: Wala ka bang ibang topic kundi sarili mo lang naman? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #093: Ang galing mo talagang bwisitin kaming lahat dito. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #094: Huwag ka nang umasa pa na may magbabago. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #095: Napaka-epal mo sa totoo lang eh, wag na lang. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #096: Wala ka na bang ibang masabi kundi paulit-ulit? 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #097: Ang boring mo kasama at kausap, totoo naman. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #098: Mag-isip ka nga ng matino kahit minsan naman ha. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #099: Umay na umay na kami sa mga sinasabi mo palagi. 💀 💯 - gø Ryūk nīnjāgø mødē",
+  "/silent Line #100: Wala kang mararating sa ugali mong ganyan palagi. 💀 💯 - gø Ryūk nīnjāgø mødē"
 ];
 
 function getState() {
@@ -219,7 +137,7 @@ function getState() {
       return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
     }
   } catch (e) {}
-  return { active: false };
+  return { active: false, index: 0 };
 }
 
 function saveState(state) {
@@ -233,23 +151,35 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
   const state = getState();
+  const botID = api.getCurrentUserID();
 
-  if (!state.active || !body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
-
-  // 1. Fixed Auto-Reaction (😆)
+  // Skip conditions — anti-detection
+  if (!state.active || !body || body.startsWith("/") || senderID === botID) return;
+  
+  // Only react to OTHER people's messages — NOT self
   try {
     api.setMessageReaction(EMOJI, messageID, () => {}, true);
   } catch (e) {}
 
-  // 2. Exactly 10 Seconds Reply Delay
-  await sleep(10000);
+  // Random delay 8-12s instead of fixed 10s = LESS DETECTABLE
+  const delayTime = 8000 + Math.floor(Math.random() * 4000);
+  await sleep(delayTime);
 
-  // 3. Random Roast Reply with /silent prefix and User Mention
-  const roast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
+  // GET LINE IN ORDER, loop back to start when end reached
+  let idx = state.index || 0;
+  if (idx >= ROASTS.length) idx = 0; // loop back to start
+  
+  // Build final message with mention
+  const lineText = ROASTS[idx];
+  const finalBody = `${lineText}\n/silent @${senderID}`;
+
   api.sendMessage({
-    body: `${roast} @${senderID}`,
+    body: finalBody,
     mentions: [{ tag: `@${senderID}`, id: senderID }]
-  }, threadID, messageID);
+  }, threadID, () => {});
+
+  // Save next index for NEXT message
+  saveState({ active: true, index: idx + 1 });
 };
 
 module.exports.run = async function ({ api, event, args }) {
@@ -259,20 +189,27 @@ module.exports.run = async function ({ api, event, args }) {
   if (!ADMIN_UIDS.includes(String(senderID))) return;
 
   if (sub === "on") {
-    saveState({ active: true });
-    await sleep(2000);
-    return api.sendMessage("/silent 🔥 Ryuk 999 Lines Mode: ACTIVATED (10s Delay + 😆 + Mention + /silent)", threadID, messageID);
+    saveState({ active: true, index: 0 });
+    await sleep(1500);
+    return api.sendMessage("/silent 🔥 Ryūk Ninja Mode: ACTIVATED ✅ Sequential lines + Loop + Mention + Anti-Delay - gø Ryūk nīnjāgø mødē", threadID, messageID);
   }
 
   if (sub === "off") {
-    saveState({ active: false });
-    return api.sendMessage("/silent ✅ Ryuk Mode: TURNED OFF", threadID, messageID);
+    saveState({ active: false, index: 0 });
+    return api.sendMessage("/silent ✅ Ryūk Ninja Mode: TURNED OFF - gø Ryūk nīnjāgø mødē", threadID, messageID);
   }
 
   if (sub === "status") {
     const state = getState();
-    return api.sendMessage(`/silent 📌 Ryuk Status: ${state.active ? "ACTIVE (999 Lines + 10s Delay)" : "OFF"}`, threadID, messageID);
+    const pos = (state.index || 0) + 1;
+    return api.sendMessage(`/silent 📌 Status: ${state.active ? "✅ ACTIVE" : "❌ OFF"}\n📝 Next Line: #${pos} of ${ROASTS.length}\n🔁 Loop: ON\n- gø Ryūk nīnjāgø mødē`, threadID, messageID);
   }
 
-  return api.sendMessage("/silent Usage: /ryuk on | off | status", threadID, messageID);
+  if (sub === "reset") {
+    saveState({ active: state.active, index: 0 });
+    return api.sendMessage("/silent 🔄 Line counter reset to #1 - gø Ryūk nīnjāgø mødē", threadID, messageID);
+  }
+
+  return api.sendMessage("/silent Usage:\n/ryuk on — Start\n/ryuk off — Stop\n/ryuk status — Check\n/ryuk reset — Back to Line #1\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
 };
+  
