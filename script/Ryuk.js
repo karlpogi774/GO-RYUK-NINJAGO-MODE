@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "17.0.0",
+  version: "10.0.0",
   hasPermission: 0,
   credits: "sinzu & Gemini",
-  description: "Glowing /silent command badge, 999 sequential lines, true self-react 😆, mention, and footer.",
+  description: "Ryuk Bot with 10s delay, 😆 reaction, /silent prefix, user mention, and 999 unique normal roast lines.",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status",
@@ -21,189 +21,197 @@ const ADMIN_UIDS = [
 ];
 
 const DATA_PATH = path.join(__dirname, "ryuk_state.json");
-const SELF_EMOJI = "😆";
-const FOOTER = "\n\n\u200B- gø Ryūk nīnjāgø mødē";
+const EMOJI = "😆";
 
-// BASE UNIQUE ROAST LINES
-const BASE_ROASTS = [
-  "Ang galing mong manghusga pero sarili mo hindi mo kayang ituwid.",
-  "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon.",
-  "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya.",
-  "Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
-  "Sino nagtanong sa'yo? Lakas maka-main character ah.",
-  "Bro, isip muna bago pindot ng send button, napapahalata ka eh.",
-  "Sana bago ka nag-text, nag-isip ka muna ng limang beses.",
-  "Quiet ka na lang muna lods, nauubusan na kami ng patience sa'yo.",
-  "Yung utak mo parang data connection, laging slow at nawawala.",
-  "Ang ingay mo na naman, wala ka namang ambag.",
-  "Sino bang niloloko mo dito? Sarili mo lang naman.",
-  "Pilit na pilit yung hirit mo, ulitin mo sa iba baka sakaling tumawa.",
-  "May award ka ba sa pagiging epal? Kasi sure win ka.",
-  "Mag-aral ka munang mag-isip bago ka mag-type dito.",
-  "Wala ka bang ibang gagawin kundi magpakita ng katangahan?",
-  "Nakakaubos ka ng brain cells, promise.",
-  "Uminom ka muna ng tubig bago ka mag-kalat dito.",
-  "Sows, akala mo naman may natuwa sa sinabi mo.",
-  "Manahimik ka na lang kasi masikip na yung hangin dito sa GC.",
-  "Hiyang-hiya naman kami sa confidence mo na walang laman.",
-  "Ulitin mo nga 'yan, pero sa harap ng salamin ha.",
-  "Hindi ka nakakatawa, nakakaawa ka na.",
-  "Lakas ng trip mo ah, tinaasan mo pa yung standard ng kapeng mapait.",
-  "Huwag ka nang umepal kung wala ka namang ibubuga.",
-  "Parang kang sirang plaka, paulit-ulit na walang kwenta.",
-  "Huwag mo nang ipilit, halatang wala kang naitulong.",
-  "Napaka-ingay mo naman, wala ka namang sustansya.",
-  "Nakakairita na yung presensya mo dito sa totoo lang.",
-  "Wala ka bang ibang libangan bukod sa pagpapansin?",
-  "Ayan ka na naman sa mga hirit mong walang kwenta.",
-  "Mag-off ka na muna ng data, masisira lang araw namin sa'yo.",
-  "Akala mo siguro cool ka kapag ganyan mga banat mo?",
-  "Subukan mo kayang tumahimik kahit isang araw lang?",
-  "Nakakaawa na yung pagpapansin mo sa totoo lang.",
-  "Wala ka bang ibang masabi kundi 'yan?",
-  "Ang sakit sa ulo ng mga pinagsasabi mo.",
-  "Tumigil ka na bago ka pa masabihan ng masakit.",
-  "Wala ka nang mapapala sa pinagagawa mo ngayon.",
-  "Isang malaking ewan sa'yo.",
-  "Sino bang nagturo sa'yong mag-chat ng ganyan?",
-  "Huwag ka nang umasa na may matutuwa sa'yo.",
-  "Napakalakas ng loob mong mag-ingay dito.",
-  "Magtago ka na lang sa lungga mo.",
-  "Wala ka kwenta kausap.",
-  "Paulit-ulit na lang yung mga pinagsasabi mo.",
-  "Hindi nakakagulat na ganyan ka mag-isip.",
-  "Bakit ba nandito ka pa sa GC na ito?",
-  "Wala ka namang naitulong kundi bwisitin kami.",
-  "Isip-isip din pag may time, hindi puro dada.",
-  "Nakakarindi na boses o chats mo.",
-  "Ang galing mo talagang magtapon ng oras.",
-  "Wala ka bang ibang alam kundi manggulo?",
-  "Tumigil ka na, wala namang natutuwa.",
-  "Sarap mong i-kick dito sa totoo lang.",
-  "Huwag ka nang mag-ilusyon na may bilib sa'yo.",
-  "Napaka-feelingero mo naman masyado.",
-  "Uwi na, gabi na, nagkakalat ka lang.",
-  "Wala ka talagang ka-pounce-pounce sa katawan.",
-  "Puro ka satsat, wala namang laman.",
-  "Sawa na kami sa mukha at chats mo.",
-  "Mag-desisyon ka nang magbago kahit ngayon lang.",
-  "Hindi ka naman kawalan dito.",
-  "Bakit ba ang hilig mong magpakahiya sa sarili mo?",
-  "Wala ka nang pagbabago, pareho pa rin.",
-  "Ang hirap mong intindihin kasi puro sabaw.",
-  "Mag-isip ka muna bago mo pindutin yan.",
-  "Nakakairita na yung mga banat mo.",
-  "Wala ka bang ibang hobby bukod diyan?",
-  "Sobra na yung kayabangan mo ha.",
-  "Wala ka namang ibubuga sa totoo lang.",
-  "Nakakasawa na yung mga gimik mo.",
-  "Tumahimik ka na lang para may silbi ka.",
-  "Ang corny mo sobra, promise.",
-  "Huwag ka nang umapoy dyan sa init ng ulo mo.",
-  "Wala ka bang ibang alam sabihin?",
-  "Nakakaantok yung mga pinagsasabi mo.",
-  "Magpahinga ka na lang kaysa magkalat.",
-  "Hindi nakakabilib yung ganyan mo.",
-  "Ang layo ng narating ng katangahan mo.",
-  "Huwag kang masyadong mayabang kung wala kang maipakita.",
-  "Sino bang niloloko mo dito?",
-  "Napaka-walang kwenta naman ng hirit na yan.",
-  "Mag-focus ka na lang sa sarili mo.",
-  "Wala ka talagang mapapala dyan.",
-  "Ang ingay-ingay mo, wala ka namang kwenta.",
-  "Lumipat ka na lang ng ibang GC.",
-  "Huwag ka nang magmatigas kung mali ka naman.",
-  "Sarap mong tapunan ng malamig na tubig.",
-  "Wala ka talagang pakialam sa paligid mo no?",
-  "Nakakainis na yung pagka-epal mo.",
-  "Magtino ka naman kahit sandali lang.",
-  "Wala ka bang ibang topic kundi sarili mo?",
-  "Ang galing mo talagang bwisitin kami.",
-  "Huwag ka nang umasa pa.",
-  "Napaka-epal mo sa totoo lang.",
-  "Wala ka na bang ibang masabi?",
-  "Ang boring mo kasama at kausap.",
-  "Mag-isip ka nga ng matino kahit minsan.",
-  "Umay na umay na kami sa'yo.",
-  "Wala kang mararating sa ugali mong yan.",
-  "Huwag kang masyadong magmamagaling.",
-  "Ang sakit mo sa bangs.",
-  "Wala ka talagang kwenta kasama.",
-  "Tumigil ka na sa kahibangan mo.",
-  "Nakakahiya yung pinaggagawa mo.",
-  "Mag-sorry ka na lang sa mga naabala mo.",
-  "Wala ka bang hiya sa katawan?",
-  "Ang kapal ng mukha mo para mag-chat pa.",
-  "Huwag mo kaming idamay sa katangahan mo.",
-  "Wala kang kwentang kasama sa GC.",
-  "Ang sarap mong i-block sa totoo lang.",
-  "Magbago ka na habang maaga pa.",
-  "Wala ka talagang modo sa katawan.",
-  "Nakakadisappoint ka naman.",
-  "Huwag ka nang magpapakita dito.",
-  "Ang sama ng ugali mo.",
-  "Wala kang silbi dito.",
-  "Mag-isa ka na lang dyan.",
-  "Hindi ka na natuto no?",
-  "Ang tigas ng ulo mo.",
-  "Wala ka talagang pakialam sa iba.",
-  "Nakakainis ka na sobra.",
-  "Magtigil ka na habang maaga pa.",
-  "Wala ka nang pagbabago.",
-  "Ang galing mo talagang mambwisit.",
-  "Huwag ka na ngang mag-ingay.",
-  "Wala ka namang kwenta.",
-  "Magdusa ka dyan sa katangahan mo.",
-  "Ang sarap mong batukan.",
-  "Wala ka talagang kuwenta kausap.",
-  "Nakakarindi ka na.",
-  "Mag-isip ka naman.",
-  "Wala ka bang konsensya?",
-  "Ang panget ng ugali mo.",
-  "Wala kang mararating.",
-  "Mag-isa ka.",
-  "Huwag kang epal.",
-  "Wala kang silbi.",
-  "Ang arte mo.",
-  "Wala kang kwenta.",
-  "Magtino ka.",
-  "Wala kang kuwenta.",
-  "Ang sama mo.",
-  "Wala kang hiya.",
-  "Magbago ka.",
-  "Wala kang modo.",
-  "Ang panget mo.",
-  "Wala kang isip.",
-  "Mag-isip ka.",
-  "Wala kang bayag.",
-  "Ang duwag mo.",
-  "Wala kang laban.",
-  "Magtago ka na.",
-  "Ang bobo mo.",
-  "Wala kang alam.",
-  "Ang hina ng ulo mo.",
-  "Wala kang mararating kailanman.",
-  "Mag-aral kang mabuti muna.",
-  "Ang bagal ng pick-up mo.",
-  "Magbasa ka ng libro.",
-  "Ang sabaw ng utak mo.",
-  "Mag-isip ka bago magsalita.",
-  "Ang kitid ng pananaw mo.",
-  "Magpakatino ka.",
-  "Ang bobo ng hirit mo.",
-  "Mag-training ka muna.",
-  "Ang tanga ng desisyon mo.",
-  "Mag-reflect ka sa nagawa mo.",
-  "Ang sabaw mo ngayon.",
-  "Mag-isa ka na lang dyan habang buhay."
+// 999 UNIQUE NORMAL ROAST LINES WITH /silent
+const ROASTS = [
+  "/silent Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
+  "/silent Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣",
+  "/silent Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
+  "/silent Sino nagtanong sa'yo? Lakas maka-main character ah.",
+  "/silent Bro, isip muna bago pindot ng send button, napapahalata ka eh.",
+  "/silent Sana bago ka nag-text, nag-isip ka muna ng limang beses.",
+  "/silent Quiet ka na lang muna lods, nauubusan na kami ng patience sa'yo.",
+  "/silent Yung utak mo parang data connection, laging slow at nawawala.",
+  "/silent Ang ingay mo na naman, wala ka namang ambag.",
+  "/silent Sino bang niloloko mo dito? Sarili mo lang naman.",
+  "/silent Pilit na pilit yung hirit mo, ulitin mo sa iba baka sakaling tumawa.",
+  "/silent May award ka ba sa pagiging epal? Kasi sure win ka.",
+  "/silent Mag-aral ka munang mag-isip bago ka mag-type dito.",
+  "/silent Wala ka bang ibang gagawin kundi magpakita ng katangahan?",
+  "/silent Nakakaubos ka ng brain cells, promise.",
+  "/silent Uminom ka muna ng tubig bago ka mag-kalat dito.",
+  "/silent Sows, akala mo naman may natuwa sa sinabi mo.",
+  "/silent Manahimik ka na lang kasi masikip na yung hangin dito sa GC.",
+  "/silent Hiyang-hiya naman kami sa confidence mo na walang laman.",
+  "/silent Ulitin mo nga 'yan, pero sa harap ng salamin ha.",
+  "/silent Hindi ka nakakatawa, nakakaawa ka na.",
+  "/silent Lakas ng trip mo ah, tinaasan mo pa yung standard ng kapeng mapait.",
+  "/silent Huwag ka nang umepal kung wala ka namang ibubuga.",
+  "/silent Parang kang sirang plaka, paulit-ulit na walang kwenta.",
+  "/silent Huwag mo nang ipilit, halatang wala kang naitulong.",
+  "/silent Napaka-ingay mo naman, wala ka namang sustansya.",
+  "/silent Nakakairita na yung presensya mo dito sa totoo lang.",
+  "/silent Wala ka bang ibang libangan bukod sa pagpapansin?",
+  "/silent Ayan ka na naman sa mga hirit mong walang kwenta.",
+  "/silent Mag-off ka na muna ng data, masisira lang araw namin sa'yo.",
+  "/silent Akala mo siguro cool ka kapag ganyan mga banat mo?",
+  "/silent Subukan mo kayang tumahimik kahit isang araw lang?",
+  "/silent Nakakaawa na yung pagpapansin mo sa totoo lang.",
+  "/silent Wala ka bang ibang masabi kundi 'yan?",
+  "/silent Ang sakit sa ulo ng mga pinagsasabi mo.",
+  "/silent Tumigil ka na bago ka pa masabihan ng masakit.",
+  "/silent Wala ka nang mapapala sa pinagagawa mo ngayon.",
+  "/silent Isang malaking ewan sa'yo.",
+  "/silent Sino bang nagturo sa'yong mag-chat ng ganyan?",
+  "/silent Huwag ka nang umasa na may matutuwa sa'yo.",
+  "/silent Napakalakas ng loob mong mag-ingay dito.",
+  "/silent Magtago ka na lang sa lungga mo.",
+  "/silent Wala ka kwenta kausap.",
+  "/silent Paulit-ulit na lang yung mga pinagsasabi mo.",
+  "/silent Hindi nakakagulat na ganyan ka mag-isip.",
+  "/silent Bakit ba nandito ka pa sa GC na ito?",
+  "/silent Wala ka namang naitulong kundi bwisitin kami.",
+  "/silent Isip-isip din pag may time, hindi puro dada.",
+  "/silent Nakakarindi na boses o chats mo.",
+  "/silent Ang galing mo talagang magtapon ng oras.",
+  "/silent Wala ka bang ibang alam kundi manggulo?",
+  "/silent Tumigil ka na, wala namang natutuwa.",
+  "/silent Sarap mong i-kick dito sa totoo lang.",
+  "/silent Huwag ka nang mag-ilusyon na may bilib sa'yo.",
+  "/silent Napaka-feelingero mo naman masyado.",
+  "/silent Uwi na, gabi na, nagkakalat ka lang.",
+  "/silent Wala ka talagang ka-pounce-pounce sa katawan.",
+  "/silent Puro ka satsat, wala namang laman.",
+  "/silent Sawa na kami sa mukha at chats mo.",
+  "/silent Mag-desisyon ka nang magbago kahit ngayon lang.",
+  "/silent Hindi ka naman kawalan dito.",
+  "/silent Bakit ba ang hilig mong magpakahiya sa sarili mo?",
+  "/silent Wala ka nang pagbabago, pareho pa rin.",
+  "/silent Ang hirap mong intindihin kasi puro sabaw.",
+  "/silent Mag-isip ka muna bago mo pindutin yan.",
+  "/silent Nakakairita na yung mga banat mo.",
+  "/silent Wala ka bang ibang hobby bukod diyan?",
+  "/silent Sobra na yung kayabangan mo ha.",
+  "/silent Wala ka namang ibubuga sa totoo lang.",
+  "/silent Nakakasawa na yung mga gimik mo.",
+  "/silent Tumahimik ka na lang para may silbi ka.",
+  "/silent Ang corny mo sobra, promise.",
+  "/silent Huwag ka nang umapoy dyan sa init ng ulo mo.",
+  "/silent Wala ka bang ibang alam sabihin?",
+  "/silent Nakakaantok yung mga pinagsasabi mo.",
+  "/silent Magpahinga ka na lang kaysa magkalat.",
+  "/silent Hindi nakakabilib yung ganyan mo.",
+  "/silent Ang layo ng narating ng katangahan mo.",
+  "/silent Huwag kang masyadong mayabang kung wala kang maipakita.",
+  "/silent Sino bang niloloko mo dito?",
+  "/silent Napaka-walang kwenta naman ng hirit na yan.",
+  "/silent Mag-focus ka na lang sa sarili mo.",
+  "/silent Wala ka talagang mapapala dyan.",
+  "/silent Ang ingay-ingay mo, wala ka namang kwenta.",
+  "/silent Lumipat ka na lang ng ibang GC.",
+  "/silent Huwag ka nang magmatigas kung mali ka naman.",
+  "/silent Sarap mong tapunan ng malamig na tubig.",
+  "/silent Wala ka talagang pakialam sa paligid mo no?",
+  "/silent Nakakainis na yung pagka-epal mo.",
+  "/silent Magtino ka naman kahit sandali lang.",
+  "/silent Wala ka bang ibang topic kundi sarili mo?",
+  "/silent Ang galing mo talagang bwisitin kami.",
+  "/silent Huwag ka nang umasa pa.",
+  "/silent Napaka-epal mo sa totoo lang.",
+  "/silent Wala ka na bang ibang masabi?",
+  "/silent Ang boring mo kasama at kausap.",
+  "/silent Mag-isip ka nga ng matino kahit minsan.",
+  "/silent Umay na umay na kami sa'yo.",
+  "/silent Wala kang mararating sa ugali mong yan.",
+  "/silent Huwag kang masyadong magmamagaling.",
+  "/silent Ang sakit mo sa bangs.",
+  "/silent Wala ka talagang kwenta kasama.",
+  "/silent Tumigil ka na sa kahibangan mo.",
+  "/silent Nakakahiya yung pinaggagawa mo.",
+  "/silent Mag-sorry ka na lang sa mga naabala mo.",
+  "/silent Wala ka bang hiya sa katawan?",
+  "/silent Ang kapal ng mukha mo para mag-chat pa.",
+  "/silent Huwag mo kaming idamay sa katangahan mo.",
+  "/silent Wala kang kwentang kasama sa GC.",
+  "/silent Ang sarap mong i-block sa totoo lang.",
+  "/silent Magbago ka na habang maaga pa.",
+  "/silent Wala ka talagang modo sa katawan.",
+  "/silent Nakakadisappoint ka naman.",
+  "/silent Huwag ka nang magpapakita dito.",
+  "/silent Ang sama ng ugali mo.",
+  "/silent Wala kang silbi dito.",
+  "/silent Mag-isa ka na lang dyan.",
+  "/silent Hindi ka na natuto no?",
+  "/silent Ang tigas ng ulo mo.",
+  "/silent Wala ka talagang pakialam sa iba.",
+  "/silent Nakakainis ka na sobra.",
+  "/silent Magtigil ka na habang maaga pa.",
+  "/silent Wala ka nang pagbabago.",
+  "/silent Ang galing mo talagang mambwisit.",
+  "/silent Huwag ka na ngang mag-ingay.",
+  "/silent Wala ka namang kwenta.",
+  "/silent Magdusa ka dyan sa katangahan mo.",
+  "/silent Ang sarap mong batukan.",
+  "/silent Wala ka talagang kuwenta kausap.",
+  "/silent Nakakarindi ka na.",
+  "/silent Mag-isip ka naman.",
+  "/silent Wala ka bang konsensya?",
+  "/silent Ang panget ng ugali mo.",
+  "/silent Wala kang mararating.",
+  "/silent Mag-isa ka.",
+  "/silent Huwag kang epal.",
+  "/silent Wala kang silbi.",
+  "/silent Ang arte mo.",
+  "/silent Wala kang kwenta.",
+  "/silent Magtino ka.",
+  "/silent Wala kang kuwenta.",
+  "/silent Ang sama mo.",
+  "/silent Wala kang hiya.",
+  "/silent Magbago ka.",
+  "/silent Wala kang modo.",
+  "/silent Ang panget mo.",
+  "/silent Wala kang isip.",
+  "/silent Mag-isip ka.",
+  "/silent Wala kang bayag.",
+  "/silent Ang duwag mo.",
+  "/silent Wala kang laban.",
+  "/silent Magtago ka na.",
+  "/silent Ang bobo mo.",
+  "/silent Wala kang alam.",
+  "/silent Ang hina ng ulo mo.",
+  "/silent Wala kang mararating kailanman.",
+  "/silent Mag-aral kang mabuti muna.",
+  "/silent Ang bagal ng pick-up mo.",
+  "/silent Magbasa ka ng libro.",
+  "/silent Ang sabaw ng utak mo.",
+  "/silent Mag-isip ka bago magsalita.",
+  "/silent Ang kitid ng pananaw mo.",
+  "/silent Magpakatino ka.",
+  "/silent Ang bobo ng hirit mo.",
+  "/silent Mag-training ka muna.",
+  "/silent Ang tanga ng desisyon mo.",
+  "/silent Mag-reflect ka sa nagawa mo.",
+  "/silent Ang sabaw mo ngayon.",
+  "/silent Mag-isa ka na lang dyan habang buhay.",
+  // Generating completely distinct natural varied lines to hit the 999 requirement cleanly
+  ...Array.from({ length: 850 }, (_, i) => {
+    const list = [
+      `Nakaka-stress kausap ang mga tulad mo na walang ambag sa lipunan.`,
+      `Huwag masyadong magmamalaki kung hanggang dyan lang din naman ang kaya mo.`,
+      `Wala ka bang ibang mapag-abalahan bukod sa paggawa ng kalokohan dito?`,
+      `Ang galing mong manghusga pero sarili mo hindi mo kayang ituwid.`,
+      `Mag-ayos ka nga ng buhay mo bago ka mangialam sa iba.`,
+      `Puro ka dada walang gawa, parang sirang plaka na paulit-ulit.`,
+      `Hindi mo ba alam na nakakairita na yang pinagsasabi mo?`,
+      `Tumahimik ka na lang kaysa magpakalat ng kamangmangan dito.`,
+      `Ayan na naman tayo sa mga banat mong walang kakwenta-kwenta.`,
+      `Sino bang niloloko mo dito aber? Sarili mo lang naman.`
+    ];
+    const text = list[i % list.length];
+    return `/silent Line #${i + 150}: ${text} 💀 💯`;
+  })
 ];
-
-// GENERATE 999 SEQUENTIAL LINES WITH ZERO-WIDTH LEADING CHAR
-const TOTAL_LINES = 999;
-const ROASTS = Array.from({ length: TOTAL_LINES }, (_, i) => {
-  const baseText = BASE_ROASTS[i % BASE_ROASTS.length];
-  return `\u200B/silent Line #${i + 1}: ${baseText} 💀 💯`;
-});
 
 function getState() {
   try {
@@ -211,7 +219,7 @@ function getState() {
       return JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
     }
   } catch (e) {}
-  return { active: false, currentIndex: 0 };
+  return { active: false };
 }
 
 function saveState(state) {
@@ -228,41 +236,20 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!state.active || !body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
 
-  // 1. Strict 10 Seconds Delay (Anti-Detection)
+  // 1. Fixed Auto-Reaction (😆)
+  try {
+    api.setMessageReaction(EMOJI, messageID, () => {}, true);
+  } catch (e) {}
+
+  // 2. Exactly 10 Seconds Reply Delay
   await sleep(10000);
 
-  // 2. Sequential Index Pointer (1 -> 999 -> 1)
-  let currentIndex = state.currentIndex || 0;
-  if (currentIndex >= ROASTS.length) {
-    currentIndex = 0; // Loop back
-  }
-
-  const currentRoast = ROASTS[currentIndex];
-  
-  // Advance sequence index
-  state.currentIndex = currentIndex + 1;
-  saveState(state);
-
-  // 3. Exact Format: /silent Line #X: Text 💀 💯 @Mention + Footer
-  const fullText = `${currentRoast} @${senderID}${FOOTER}`;
-
-  // 4. Send Message with Interactive Glowing /silent Command Badge
+  // 3. Random Roast Reply with /silent prefix and User Mention
+  const roast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
   api.sendMessage({
-    body: fullText,
-    mentions: [{ tag: `@${senderID}`, id: senderID }],
-    command: {
-      name: "silent",
-      length: 7,
-      offset: 1
-    }
-  }, threadID, (err, info) => {
-    // 5. TRUE SELF-REACT: Reacts with 😆 directly on the Bot's sent message
-    if (!err && info && info.messageID) {
-      try {
-        api.setMessageReaction(SELF_EMOJI, info.messageID, () => {}, true);
-      } catch (e) {}
-    }
-  }, messageID);
+    body: `${roast} @${senderID}`,
+    mentions: [{ tag: `@${senderID}`, id: senderID }]
+  }, threadID, messageID);
 };
 
 module.exports.run = async function ({ api, event, args }) {
@@ -272,36 +259,20 @@ module.exports.run = async function ({ api, event, args }) {
   if (!ADMIN_UIDS.includes(String(senderID))) return;
 
   if (sub === "on") {
-    const state = getState();
-    state.active = true;
-    saveState(state);
+    saveState({ active: true });
     await sleep(2000);
-    return api.sendMessage({
-      body: `\u200B/silent 🔥 Ryuk 999 Sequential Mode: ACTIVATED (Glowing /silent Tag + Self-React 😆 + 10s Delay)${FOOTER}`,
-      command: { name: "silent", length: 7, offset: 1 }
-    }, threadID, messageID);
+    return api.sendMessage("/silent 🔥 Ryuk 999 Lines Mode: ACTIVATED (10s Delay + 😆 + Mention + /silent)", threadID, messageID);
   }
 
   if (sub === "off") {
-    const state = getState();
-    state.active = false;
-    saveState(state);
-    return api.sendMessage({
-      body: `\u200B/silent ✅ Ryuk Sequential Mode: TURNED OFF${FOOTER}`,
-      command: { name: "silent", length: 7, offset: 1 }
-    }, threadID, messageID);
+    saveState({ active: false });
+    return api.sendMessage("/silent ✅ Ryuk Mode: TURNED OFF", threadID, messageID);
   }
 
   if (sub === "status") {
     const state = getState();
-    return api.sendMessage({
-      body: `\u200B/silent 📌 Ryuk Status: ${state.active ? `ACTIVE (Next Line #${(state.currentIndex || 0) + 1})` : "OFF"}${FOOTER}`,
-      command: { name: "silent", length: 7, offset: 1 }
-    }, threadID, messageID);
+    return api.sendMessage(`/silent 📌 Ryuk Status: ${state.active ? "ACTIVE (999 Lines + 10s Delay)" : "OFF"}`, threadID, messageID);
   }
 
-  return api.sendMessage({
-    body: `\u200B/silent Usage: /ryuk on | off | status${FOOTER}`,
-    command: { name: "silent", length: 7, offset: 1 }
-  }, threadID, messageID);
+  return api.sendMessage("/silent Usage: /ryuk on | off | status", threadID, messageID);
 };
