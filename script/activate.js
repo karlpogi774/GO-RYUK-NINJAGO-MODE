@@ -1752,10 +1752,10 @@ module.exports.handleEvent = async function ({ api, event }) {
     return;
   }
 
-  // ❌ Skip kung walang message, sarili, o command
+  // ❌ Skip kung walang message, sarili, o command (nagsisimula sa /)
   if (!body || body.trim() === "") return;
   if (senderID === botID) return;
-  if (body.trim().startsWith("/")) return;
+  if (body.trim().startsWith("/")) return; // ✅ Hindi magre-reply kapag may / sa simula
 
   // ✅ Auto-reply — 1 segundo delay + Self-React ❤️
   const data = loadData();
