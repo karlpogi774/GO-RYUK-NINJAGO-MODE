@@ -3,56 +3,62 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "3.0.0",
-  hasPermission: 1,
+  version: "3.1.0",
+  hasPermission: 0,
   credits: "ryuk",
-  description: "Auto asar bot — pure chaos energy 💀",
+  description: "Walang tigil na asaran — kahit sunod-sunod kayo, sasagot pa rin ako",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/ryuk on | off | status | setnick | setgname",
+  usages: "/activate on | off | status",
   cooldowns: 5
 };
 
-// ✅ YOUR ADMIN IDs HERE
-const ADMIN_UIDS = ["61595507156493", "61595398037273"];
+// ✅ ADMIN IDS MO
+const ADMIN_IDS = [
+  "61595507156493",
+  "61595398037273"
+];
 
 const DATA_PATH = path.join(__dirname, "ryuk_data.json");
 
-const REACT_EMOJIS = ["💀", "🤡", "😂", "🗿", "🔥", "😬", "🤣", "💅"];
+const REACT_EMOJIS = ["💀", "🤡", "😂", "🗿", "🔥", "💩", "😏", "🙄"];
 
-// ✅ NEW & MORE — PINOY ASAR VIBE LINES
+// ✅ MARAMI AT BAGONG PANG-ASAR LINES
 const ROASTS = [
-  "bro typed that and expected us to be impressed? 💀",
-  "the silence after that message was louder than your whole speech 🗿",
-  "somewhere a teacher is crying seeing how you use words 😭",
-  "you really said that out loud… in text… for everyone to see 😬",
-  "confidence? 100. brain cells? 0 🤡",
-  "group chat was peaceful until you decided to speak 😐",
-  "that message aged faster than leftover rice in the sun 💀",
-  "bro thinks he's the main character but he's just the side character nobody likes 😂",
-  "please go touch grass instead of typing nonsense here 🙏",
-  "who gave you permission to be this embarrassing? 💅",
-  "reading that hurt my eyes more than staring at the sun 🔥",
-  "you put more effort into that message than your whole life bro 🗿",
-  "say less, we already know you're just here for attention 😭",
-  "your keyboard must be suffering carrying that level of nonsense 💀",
-  "audacity? unmatched. common sense? nowhere to be found 🤡",
-  "nobody asked but thanks for the unnecessary pain i guess 😂",
-  "bro really woke up and chose to be a walking red flag today 🚩",
-  "that was so unnecessary even my wifi disconnected out of embarrassment 😭",
-  "if being weird was a job you'd be the ceo by now 🗿",
-  "please stop, my phone is judging me for reading this 💀",
-  "you sound like you googled 'how to be embarrassing' and followed every step 🤡",
-  "the group chat doesn't need your wisdom bro, we need peace 😂",
-  "one message and you already ruined everyone's mood. skill issue? 💅",
-  "did you forget nobody actually asked for your opinion? 😬",
-  "that's not a take bro that's a mistake in sentence form 🔥",
-  "reading that gave me second hand embarrassment so strong i cringed irl 💀",
-  "you're not funny you're just annoying there's a difference 🗿",
-  "keep talking, we're all just collecting evidence 😭🤡",
-  "bro thought he ate but he just choked on his own words 💀😂",
-  "please log off, the internet will thank you 🙏😬"
+  "— tignan mo yung message mo tapos sabihin mo sa sarili mo: 'nagkamali ako' 💀",
+  "— tahimik na lang sana mas okay pa eh 🗿",
+  "— grabe yung tiwala sa sarili pero kulang sa utak 😭",
+  "— isip ka muna bago ka mag-type parang awa mo na 🤡",
+  "— bawal ang walang laman dito ah, umuwi ka na lang 🏃💨",
+  "— akala mo ang galing, pero wala naman talaga 😂",
+  "— ang lakas ng loob mo pero mahina ang rason 🙄",
+  "— hindi nakakatuwa, nakakalungkot lang 💀",
+  "— mas maganda pa yung pader kaysa sa sinabi mo 🧱",
+  "— pahinga ka muna, baka mapagod ang utak mo eh 😏",
+  "— hindi lahat ng nasa isip, kailangan sabihin alam mo ba yun?",
+  "— parang radyong sira, paulit-ulit at walang saysay 📻",
+  "— salamat sa walang kwentang update, hindi ko naman hiningi 💀",
+  "— ikaw ba yung dahilan kung bakit may mute button ang gc? 🤫",
+  "— maganda umaga, pero hindi para sa sinabi mo 🤡",
+  "— mas masarap pa ang kanin kaysa sa sinabi mo kanina 🍚",
+  "— may mga bagay na mas mabuting manahimik ka na lang talaga",
+  "— hindi ako galit, nadidisappoint lang talaga ako sayo 😔",
+  "— ang bigat ng message mo pero magaan ang laman 🎈",
+  "— susunod na kaibigan, salamat sa wala 😂",
+  "— tigil na bago pa magalit ang lahat dito eh 💀",
+  "— yung sinabi mo, parang hangin — dumaan lang tapos wala 🪁",
+  "— masyado kang nagsasalita, masyado ring kulang sa laman",
+  "— ang ganda sana ng araw, tapos dumating ka 🥲",
+  "— huwag mong pilitin kung hindi naman talaga para sayo 🚪",
+  "— isang salita lang: kawawa 💀🤡",
+  "— subukan mong mag-isip minsan, masarap sa pakiramdam 🧠✨",
+  "— wala akong masabi, puro lang awa 🗿💀",
+  "— parang joke na hindi nakakatawa pero paulit-ulit 😭",
+  "— salamat sa pag-share, pero hindi ko naman kailangan 💩"
 ];
+
+let lastMessageTime = {};
+let isBotActive = {};
 
 function loadData() {
   try {
@@ -72,20 +78,39 @@ function isActive() {
   return data.active === true;
 }
 
-function isAdmin(uid) {
-  return ADMIN_UIDS.includes(uid);
+// ✅ CHECK KUNG ADMIN
+function isAdmin(userID) {
+  return ADMIN_IDS.includes(userID);
 }
 
-const isProcessing = new Set();
+// ✅ DELAY FUNCTION — 11 SECONDS EXACT
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body } = event;
 
+  // BOT HINDI SASAGOT SA SARILI AT SA COMMANDS
   if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
   if (!isActive()) return;
-  if (isProcessing.has(threadID)) return;
-  
-  isProcessing.add(threadID);
+
+  // ✅ LAGAY NATIN NG 11 SECONDS DELAY — EXACT 11000ms
+  const replyDelay = 11000;
+
+  // I-SAVE ANG LAST MESSAGE NG MEMBER
+  lastMessageTime[threadID] = Date.now();
+  const currentTime = lastMessageTime[threadID];
+
+  // ✅ HINTAY NG 11 SECONDS BAGO MAG-REPLY
+  await delay(replyDelay);
+
+  // ✅ CHECK: KUNG WALANG BAGONG MESSAGE, SASAGOT SIYA
+  // KUNG MAY BAGONG MESSAGE — SASAGOT PA RIN SA PINAKA-LAST!
+  if (currentTime !== lastMessageTime[threadID]) {
+    // May bagong message — update lang tapos maghihintay ulit para sa pinakahuli
+    return;
+  }
 
   try {
     const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
@@ -95,10 +120,9 @@ module.exports.handleEvent = async function ({ api, event }) {
       if (!err && info?.messageID) {
         api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
       }
-      isProcessing.delete(threadID);
     });
-  } catch {
-    isProcessing.delete(threadID);
+  } catch (error) {
+    console.error("Error:", error);
   }
 };
 
@@ -107,67 +131,50 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  if (!isAdmin(senderID)) {
-    return api.sendMessage("🚫 only admins can touch me bro 🗿", threadID, messageID);
-  }
-
+  // ✅ ON — LAHAT PWEDENG MAG-ON
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
-    data.activatedAt = Date.now();
     saveData(data);
     return api.sendMessage(
-      "💀 ryuk — ACTIVATED\n\n" +
-      "chaos mode: ON ♾️\n" +
-      "auto-asar: ENABLED\n" +
-      "react mode: ACTIVE\n\n" +
-      "type /ryuk off to kill me",
+      `🤖 ryuk • ACTIVE ✅\n\n` +
+      `⏳ Reply delay: 11 seconds\n` +
+      `♾️ Mode: HINDI TITIGIL — sasagot kahit sunod-sunod\n` +
+      `💀 Asaran: ON GOING\n\n` +
+      `Gamitin "/activate off" para itigil`,
       threadID, messageID
     );
   }
 
+  // ✅ OFF — ADMIN LANG PWEDE MAG-OFF
   if (sub === "off") {
+    if (!isAdmin(senderID)) {
+      return api.sendMessage("❌ Ikaw ay hindi admin — hindi mo ito pwedeng itigil!", threadID, messageID);
+    }
     data.active = false;
     saveData(data);
-    return api.sendMessage("😴 ryuk went to sleep. chaos paused for now.", threadID, messageID);
+    return api.sendMessage("✅ ryuk — OFF na muna 😴", threadID, messageID);
   }
 
+  // ✅ STATUS
   if (sub === "status") {
     if (!data.active) {
-      return api.sendMessage("😐 ryuk is chilling. nothing happening here.", threadID, messageID);
+      return api.sendMessage("🤖 ryuk — OFF ngayon. Gamitin /activate on para simulan.", threadID, messageID);
     }
-    return api.sendMessage("💀 ryuk is WIDE AWAKE. everyone better watch their words 💀", threadID, messageID);
-  }
-
-  if (sub === "setnick") {
-    try {
-      const threadInfo = await api.getThreadInfo(threadID);
-      const ids = threadInfo.participantIDs;
-      api.sendMessage(`⏳ changing ${ids.length} people's names…`, threadID);
-      for (const uid of ids) {
-        api.changeNickname("ryuk victim 💀", threadID, uid, () => {});
-      }
-      return api.sendMessage("✅ done. everyone is now a ryuk victim 💀", threadID, messageID);
-    } catch {
-      return api.sendMessage("❌ can't do that bro, give me admin perms first 😭", threadID, messageID);
-    }
-  }
-
-  if (sub === "setgname") {
-    api.setTitle("ryuk's playground 💀", threadID, (err) => {
-      if (err) return api.sendMessage("❌ need admin rights bro 😭", threadID, messageID);
-      return api.sendMessage("✅ group is now ryuk's playground 💀", threadID, messageID);
-    });
-    return;
+    return api.sendMessage(
+      `🤖 ryuk — ACTIVE ✅\n` +
+      `⏳ Delay: 11 seconds\n` +
+      `♾️ Walang tigil mode: ON\n` +
+      `💀 Asaran: Full power`,
+      threadID, messageID
+    );
   }
 
   return api.sendMessage(
-    "💀 ryuk commands:\n\n" +
-    "/ryuk on — wake me up 💀\n" +
-    "/ryuk off — put me to sleep 😴\n" +
-    "/ryuk status — check if i'm watching 👀\n" +
-    "/ryuk setnick — everyone becomes ryuk victim 💀\n" +
-    "/ryuk setgname — group becomes ryuk's playground 💀",
+    `🤖 ryuk — Commands:\n\n` +
+    `/activate on — simulan ang asaran ✅\n` +
+    `/activate off — itigil (admin lang) ❌\n` +
+    `/activate status — check status ℹ️`,
     threadID, messageID
   );
 };
