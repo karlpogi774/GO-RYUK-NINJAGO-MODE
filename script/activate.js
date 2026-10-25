@@ -9,7 +9,7 @@ const ADMIN_IDS = [
 
 module.exports.config = {
   name: "activate",
-  version: "7.3-fixed",
+  version: "7.4-admin-fixed",
   hasPermission: 0,
   credits: "sinzu + ryuk edit",
   description: "Auto-reply + Group Name Lock + Nickname Set",
@@ -126,7 +126,252 @@ const DEFAULT_ROASTS = [
   "Bro parang capslock ka, laging galit 😆",
   "Lods parang popcorn ka, ang ingay mo 😂",
   "Parang charger ka lods, lagi kang nawawala haha",
-  "Lods parang ulam ka, panis ka na ata lods"
+  "Lods parang ulam ka, panis ka na ata lods",
+  "Lods pahinga ka muna, masyado ka nang main character",
+  "Sige lang lods, confident ka pa rin eh",
+  "Parang blankong papel pa rin yang banat mo",
+  "Bro isip muna bago send ulit",
+  "Quiet mode ka muna lods",
+  "Lods lowbat ka na talaga",
+  "Ang tahimik mo kanina ah, bigla kang naging maingay",
+  "Lods parang loading ka pa rin",
+  "Sige lods, ikaw na bida sa GC na to",
+  "Relax lang lods, chill ka lang",
+  "Parang wifi mo lods, hina pa rin",
+  "Lods tulog ka muna, antok ka na",
+  "Bro parang kape ka pa rin, bigla kang sumulpot",
+  "Lods ang lakas pa rin ng trip mo",
+  "Parang jeep ka pa rin, puno ka ng chismis",
+  "Lods bawasan mo pa brightness mo",
+  "Sige lang lods, tuloy mo pa energy mo",
+  "Lods parang ulan ka pa rin, bigla bumuhos",
+  "Parang GCash ka pa rin, pending",
+  "Lods parang alarm ka pa rin",
+  "Lods parang brownout ka pa rin",
+  "Bro parang meme ka pa rin",
+  "Lods parang ML ka pa rin",
+  "Parang battery mo lods, lowbat na",
+  "Lods parang EDSA ka pa rin, traffic",
+  "Bro chill ka pa rin, di pa end",
+  "Lods parang playlist ka pa rin",
+  "Parang exam ka pa rin, biglang sulpot",
+  "Lods parang chismis ka pa rin",
+  "Bro parang softdrinks ka pa rin",
+  "Lods parang jeep pa rin, umaandar ka na",
+  "Bro parang capslock ka pa rin",
+  "Lods parang popcorn ka pa rin",
+  "Parang charger ka pa rin, nawawala",
+  "Lods parang ulam ka pa rin, panis ka na",
+  "Lods pahinga ka muna, bida ka na naman",
+  "Sige lang lods, confident ka pa rin",
+  "Parang blankong papel yang banat mo, malinis pa rin",
+  "Bro isip muna bago send, isip muna",
+  "Quiet mode ka muna lods, tahimik ka muna",
+  "Lods parang lowbat ka na talaga, pahinga",
+  "Ang tahimik mo kanina, bat ang ingay mo na",
+  "Lods parang loading screen ka pa rin",
+  "Sige lods, ikaw na bida, kami extra lang",
+  "Relax lang lods, di ka pinag-aagawan talaga",
+  "Parang wifi mo lods, unstable pa rin",
+  "Lods tulog ka muna, puyat ka pa",
+  "Bro parang kape ka, sumulpot ka na naman",
+  "Lods ang lakas ng trip mo ah, iba ka",
+  "Parang jeep ka lods, chismis pa rin",
+  "Lods bawasan mo brightness mo, silaw kami",
+  "Sige lang lods, energy mo malakas",
+  "Lods parang ulan ka, bigla ka na lang",
+  "Parang GCash ka lods, pending pa rin",
+  "Lods parang alarm ka, ingay mo",
+  "Lods parang brownout ka, nawala ka na naman",
+  "Bro parang meme ka, gasgas ka na",
+  "Lods parang ML ka, comeback ka na naman",
+  "Parang battery mo lods, ubos ka na",
+  "Lods parang EDSA ka, trapik ka pa rin",
+  "Bro chill lang, di ka inaano",
+  "Lods parang playlist ka, ulit ulit",
+  "Parang exam ka lods, sumulpot ka na naman",
+  "Lods parang chismis ka, kumalat ka na",
+  "Bro parang softdrinks ka, bula ka lang",
+  "Lods parang jeep, puno ka na umaandar pa",
+  "Bro parang capslock ka, galit ka ba",
+  "Lods parang popcorn ka, ingay mo ah",
+  "Parang charger ka lods, nawawala ka na naman",
+  "Lods parang ulam ka, panis ka na talaga",
+  "Lods pahinga ka muna, main character ka na naman 😆",
+  "Sige lang lods, tuloy mo lang confidence mo",
+  "Parang blankong papel yang banat mo, wala laman",
+  "Bro isip muna bago banat",
+  "Quiet mode ka muna lods, ingay mo na",
+  "Lods lowbat ka na, charge ka muna",
+  "Ang tahimik mo kanina, ang ingay mo na ngayon 😂",
+  "Lods loading ka pa rin, tagal mo",
+  "Sige lods, ikaw na bida sa GC",
+  "Relax lang lods, di ka habol",
+  "Parang wifi mo lods, mahina ka pa",
+  "Lods tulog ka muna, lutang ka na",
+  "Bro parang kape ka, bigla kang sulpot",
+  "Lods trip mo malakas ngayon",
+  "Parang jeep ka lods, siksikan na chismis mo",
+  "Lods hinaan mo ilaw mo, shining ka masyado",
+  "Sige lang lods, lakas ng energy mo",
+  "Lods parang ulan ka, biglaang buhos",
+  "Parang GCash ka lods, tagal mo dumating",
+  "Lods parang alarm ka, gising mo kami",
+  "Lods parang brownout ka, bigla kang wala",
+  "Bro parang meme ka, luma ka na",
+  "Lods parang ML ka, puro ka dada",
+  "Parang battery mo lods, pa lowbat na",
+  "Lods parang EDSA ka, bagal mo",
+  "Bro chill lang, kalma ka lang",
+  "Lods parang playlist ka, same song",
+  "Parang exam ka lods, di ka ready",
+  "Lods parang chismis ka, ikaw lagi bida",
+  "Bro parang softdrinks ka, puro hangin",
+  "Lods parang jeep, takbo ka nang takbo",
+  "Bro parang capslock ka, sigaw ka nang sigaw",
+  "Lods parang popcorn ka, putok ka nang putok",
+  "Parang charger ka lods, hanap ka nang hanap",
+  "Lods parang ulam ka, sawa na kami",
+  "Lods pahinga ka muna, pagod ka na",
+  "Sige lang lods, ikaw na malakas",
+  "Parang blankong papel yan, walang sulat",
+  "Bro isip muna, bago ka mag chat",
+  "Quiet mode ka muna lods, tahimik muna",
+  "Lods lowbat ka na, pahinga ka na",
+  "Ang tahimik mo kanina, maingay ka na ngayon",
+  "Lods loading ka pa, di ka pa tapos",
+  "Sige lods, bida ka na, kami audience",
+  "Relax lang lods, wala ka kalaban",
+  "Parang wifi mo lods, wala ka signal",
+  "Lods tulog ka muna, puyat ka na kasi",
+  "Bro parang kape ka, bigla kang gising",
+  "Lods lakas ng trip mo, iba ka ngayon",
+  "Parang jeep ka lods, punong puno ka",
+  "Lods bawas brightness, masakit sa mata",
+  "Sige lang lods, hataw ka pa",
+  "Lods parang ulan ka, wala sa timing",
+  "Parang GCash ka lods, loading ka pa",
+  "Lods parang alarm ka, ingay mo pa rin",
+  "Lods parang brownout ka, wala ka na naman",
+  "Bro parang meme ka, corny ka na",
+  "Lods parang ML ka, puro ka yabang",
+  "Parang battery mo lods, empty ka na",
+  "Lods parang EDSA ka, stuck ka pa rin",
+  "Bro chill lang, easy ka lang",
+  "Lods parang playlist ka, repeat ka",
+  "Parang exam ka lods, kabado ka na",
+  "Lods parang chismis ka, kalat ka na",
+  "Bro parang softdrinks ka, wala ka lasa",
+  "Lods parang jeep, andar ka nang andar",
+  "Bro parang capslock ka, di ka marunong mag small",
+  "Lods parang popcorn ka, ang ingay ingay mo",
+  "Parang charger ka lods, laging nawawala ka",
+  "Lods parang ulam ka, umay ka na",
+  "Lods pahinga ka muna, masyado ka nang main character ngayong araw 😆",
+  "Sige lang lods, confident ka eh, tuloy mo lang yan",
+  "Parang blankong papel yang banat mo ah, malinis",
+  "Bro isip muna bago send, para iwas sabog",
+  "Quiet mode ka muna lods, recharge ka lang",
+  "Lods parang lowbat ka na, pahinga ka muna",
+  "Ang tahimik mo kanina, bat ang ingay mo na ngayon",
+  "Lods parang loading screen ka, tagal matapos",
+  "Sige lods, ikaw na bida, kami na extra",
+  "Relax lang lods, di ka pinag-aagawan",
+  "Parang wifi mo lods, unstable ka ngayon",
+  "Lods tulog ka muna, puyat ka na naman",
+  "Bro parang kape ka, bigla kang sumulpot",
+  "Lods ang lakas ng trip mo ngayon ah",
+  "Parang jeep ka lods, puno ka na ng chismis",
+  "Lods bawasan mo brightness mo, masyado kang shining",
+  "Sige lang lods, tuloy mo lang yang energy mo",
+  "Lods parang ulan ka, bigla ka na lang bumuhos",
+  "Parang GCash ka lods, pending ka muna",
+  "Lods parang alarm ka, ang ingay mo sa umaga",
+  "Lods parang brownout ka, bigla kang nawala",
+  "Bro parang meme ka, paulit-ulit ka na",
+  "Lods parang ML ka, puro ka comeback",
+  "Parang battery mo lods, 1 percent na lang",
+  "Lods parang EDSA ka, traffic ka lagi",
+  "Bro chill lang, di pa end of the world",
+  "Lods parang playlist ka, paulit-ulit",
+  "Parang exam ka lods, bigla kang sumulpot",
+  "Lods parang chismis ka, mabilis ka kumalat",
+  "Bro parang softdrinks ka, puro ka bula",
+  "Lods parang jeep, di ka pa puno umaandar ka na",
+  "Bro parang capslock ka, laging galit",
+  "Lods parang popcorn ka, ang ingay mo",
+  "Parang charger ka lods, lagi kang nawawala",
+  "Lods parang ulam ka, panis ka na ata",
+  "Lods pahinga ka muna, masyado ka nang main character",
+  "Sige lang lods, confident ka pa rin eh",
+  "Parang blankong papel pa rin yang banat mo",
+  "Bro isip muna bago send ulit",
+  "Quiet mode ka muna lods",
+  "Lods lowbat ka na talaga",
+  "Ang tahimik mo kanina ah, bigla kang naging maingay",
+  "Lods parang loading ka pa rin",
+  "Sige lods, ikaw na bida sa GC na to",
+  "Relax lang lods, chill ka lang",
+  "Parang wifi mo lods, hina pa rin",
+  "Lods tulog ka muna, antok ka na",
+  "Bro parang kape ka pa rin, bigla kang sumulpot",
+  "Lods ang lakas pa rin ng trip mo",
+  "Parang jeep ka pa rin, puno ka ng chismis",
+  "Lods bawasan mo pa brightness mo",
+  "Sige lang lods, tuloy mo pa energy mo",
+  "Lods parang ulan ka pa rin, bigla bumuhos",
+  "Parang GCash ka pa rin, pending",
+  "Lods parang alarm ka pa rin",
+  "Lods parang brownout ka pa rin",
+  "Bro parang meme ka pa rin",
+  "Lods parang ML ka pa rin",
+  "Parang battery mo lods, lowbat na",
+  "Lods parang EDSA ka pa rin, traffic",
+  "Bro chill ka pa rin, di pa end",
+  "Lods parang playlist ka pa rin",
+  "Parang exam ka pa rin, biglang sulpot",
+  "Lods parang chismis ka pa rin",
+  "Bro parang softdrinks ka pa rin",
+  "Lods parang jeep pa rin, umaandar ka na",
+  "Bro parang capslock ka pa rin",
+  "Lods parang popcorn ka pa rin",
+  "Parang charger ka pa rin, nawawala",
+  "Lods parang ulam ka pa rin, panis ka na",
+  "Lods pahinga ka muna, bida ka na naman",
+  "Sige lang lods, confident ka pa rin",
+  "Parang blankong papel yang banat mo, malinis pa rin",
+  "Bro isip muna bago send, isip muna",
+  "Quiet mode ka muna lods, tahimik ka muna",
+  "Lods parang lowbat ka na talaga, pahinga",
+  "Ang tahimik mo kanina, bat ang ingay mo na",
+  "Lods parang loading screen ka pa rin",
+  "Sige lods, ikaw na bida, kami extra lang",
+  "Relax lang lods, di ka pinag-aagawan talaga",
+  "Parang wifi mo lods, unstable pa rin",
+  "Lods tulog ka muna, puyat ka pa",
+  "Bro parang kape ka, sumulpot ka na naman",
+  "Lods ang lakas ng trip mo ah, iba ka",
+  "Parang jeep ka lods, chismis pa rin",
+  "Lods bawasan mo brightness mo, silaw kami",
+  "Sige lang lods, energy mo malakas",
+  "Lods parang ulan ka, bigla ka na lang",
+  "Parang GCash ka lods, pending pa rin",
+  "Lods parang alarm ka, ingay mo",
+  "Lods parang brownout ka, nawala ka na naman",
+  "Bro parang meme ka, gasgas ka na",
+  "Lods parang ML ka, comeback ka na naman",
+  "Parang battery mo lods, ubos ka na",
+  "Lods parang EDSA ka, trapik ka pa rin",
+  "Bro chill lang, di ka inaano",
+  "Lods parang playlist ka, ulit ulit",
+  "Parang exam ka lods, sumulpot ka na naman",
+  "Lods parang chismis ka, kumalat ka na",
+  "Bro parang softdrinks ka, bula ka lang",
+  "Lods parang jeep, puno ka na umaandar pa",
+  "Bro parang capslock ka, galit ka ba",
+  "Lods parang popcorn ka, ingay mo ah",
+  "Parang charger ka lods, nawawala ka na naman",
+  "Lods parang ulam ka, panis ka na talaga",
 ];
 function loadData() {
   try {
@@ -154,12 +399,21 @@ module.exports.run = async function ({ api, event, args }) {
   const data = loadData();
   if (!data.roasts || data.roasts.length === 0) data.roasts = DEFAULT_ROASTS;
 
+  // ✅ CHECK KUNG ADMIN
   const isAdminUser = ADMIN_IDS.includes(senderID) || senderID === api.getCurrentUserID();
+
+  // 🔒 ADMIN-ONLY CHECK
+  const adminOnlyCommands = ["on", "off", "setname", "lockname", "setnickall", "setnick", "resetnickall", "status", "add", "listlines"];
+  if (adminOnlyCommands.includes(sub)) {
+    if (!isAdminUser) {
+      return api.sendMessage("❌ Admin lang ang pwedeng gumamit ng command na ito!", threadID, messageID);
+    }
+  }
 
   if (sub === "on") {
     data.active = true;
     saveData(data);
-    return api.sendMessage("🔥 Auto-reply ON! Magre-reply ako sa bawat message pagkalipas ng 12 segundo.\nGamitin: /activate off para i-stop.", threadID, messageID);
+    return api.sendMessage("🔥 Auto-reply ON! Magre-reply ako pagkalipas ng 12 segundo.", threadID, messageID);
   }
 
   if (sub === "off") {
@@ -169,7 +423,6 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   if (sub === "setname") {
-    if (!isAdminUser) return api.sendMessage("❌ Admin lang pwede.", threadID, messageID);
     const newName = args.slice(1).join(" ");
     if (!newName) return api.sendMessage("Usage: /activate setname <Group Name>", threadID, messageID);
     data.lockedGroupName = newName;
@@ -183,7 +436,6 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   if (sub === "lockname") {
-    if (!isAdminUser) return api.sendMessage("❌ Admin lang pwede.", threadID, messageID);
     const mode = (args[1] || "").toLowerCase();
     if (mode === "on") {
       data.lockNameEnabled = true;
@@ -202,7 +454,6 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   if (sub === "setnickall") {
-    if (!isAdminUser) return api.sendMessage("❌ Admin lang pwede.", threadID, messageID);
     const nick = args.slice(1).join(" ");
     if (!nick) return api.sendMessage("Usage: /activate setnickall <Nickname>\nExample: ⟪RYUK⟫ {name}", threadID, messageID);
     data.defaultNickname = nick;
@@ -226,7 +477,6 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   if (sub === "setnick") {
-    if (!isAdminUser) return api.sendMessage("❌ Admin lang pwede.", threadID, messageID);
     const nick = args.slice(1).join(" ");
     if (!nick) return api.sendMessage("Usage: /activate setnick <Nickname> — reply sa tao", threadID, messageID);
     if (event.messageReply && event.messageReply.senderID) {
@@ -237,7 +487,6 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   if (sub === "resetnickall") {
-    if (!isAdminUser) return api.sendMessage("❌ Admin lang pwede.", threadID, messageID);
     const threadInfo = await api.getThreadInfo(threadID);
     const members = threadInfo.participants;
     let success = 0, fail = 0;
@@ -294,9 +543,7 @@ module.exports.run = async function ({ api, event, args }) {
   );
 };
 
-// ==============================================
-// ✅ FIXED AUTO-REPLY — SIGURADONG GAGANA
-// ==============================================
+// --- EVENT HANDLER — Auto-reply + Group Name Lock ---
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, logMessageType, logMessageData } = event;
   const botID = api.getCurrentUserID();
@@ -315,18 +562,17 @@ module.exports.handleEvent = async function ({ api, event }) {
     return;
   }
 
-  // ❌ HINDI MAGRE-REPLY KUNG: ikaw ang nag-send, walang text, o command
+  // ❌ Skip kung walang message, sarili, o command
   if (!body || body.trim() === "") return;
   if (senderID === botID) return;
   if (body.trim().startsWith("/")) return;
 
-  // ✅ KUNG NAKA-ON ANG AUTO-REPLY
+  // ✅ Auto-reply — 12 segundo delay
   const data = loadData();
   if (!data.active) return;
 
-  // ✅ 12 SEGUNDO DELAY BAGO MAG-REPLY
   setTimeout(() => {
     const randomReply = data.roasts[Math.floor(Math.random() * data.roasts.length)];
     api.sendMessage(randomReply, threadID);
-  }, 12000); // 12,000ms = 12 segundo
+  }, 12000);
 };
