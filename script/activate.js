@@ -1572,7 +1572,7 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "on") {
     data.active = true;
     saveData(data);
-    return api.sendMessage("🔥 Auto-reply ON! Magre-reply ako pagkalipas ng 12 segundo.", threadID, messageID);
+    return api.sendMessage("🔥 Auto-reply ON! Magre-reply ako pagkalipas ng 1 segundo.", threadID, messageID);
   }
 
   if (sub === "off") {
@@ -1612,6 +1612,7 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("Usage: /activate lockname on | off", threadID, messageID);
   }
 
+  // ✅ FIXED SETNICKALL
   if (sub === "setnickall") {
     const nick = args.slice(1).join(" ");
     if (!nick) return api.sendMessage("Usage: /activate setnickall <Nickname>\nExample: ⟪RYUK⟫ {name}", threadID, messageID);
@@ -1619,20 +1620,37 @@ module.exports.run = async function ({ api, event, args }) {
     if (!data.threadSettings[threadID]) data.threadSettings[threadID] = {};
     data.threadSettings[threadID].defaultNick = nick;
     saveData(data);
-    const threadInfo = await api.getThreadInfo(threadID);
-    const members = threadInfo.participants;
-    let success = 0, fail = 0;
-    api.sendMessage(`⏳ Nagseset ng nickname sa ${members.length} members...`, threadID);
-    for (const member of members) {
-      try {
-        if (member.userID !== api.getCurrentUserID()) {
-          let finalNick = nick.replace(/{name}/g, member.name || "Member");
+    
+    try {
+      const threadInfo = await api.getThreadInfo(threadID);
+      const allMembers = threadInfo.participants || [];
+      const botID = api.getCurrentUserID();
+      const members = allMembers.filter(m => m.userID !== botID);
+      
+      api.sendMessage(`⏳ Nagseset ng nickname sa ${members.length} members...`, threadID, messageID);
+      
+      let success = 0, fail = 0;
+      
+      for (let i = 0; i < members.length; i++) {
+        const member = members[i];
+        try {
+          const displayName = member.name || member.displayName || "Member";
+          let finalNick = nick.replace(/{name}/g, displayName);
+          
           await api.changeNickname(finalNick, threadID, member.userID);
           success++;
+          
+          // Maliit na delay para hindi ma-rate limit
+          if (i % 5 === 0) await new Promise(r => setTimeout(r, 300));
+        } catch (e) {
+          fail++;
         }
-      } catch (e) { fail++; }
+      }
+      
+      return api.sendMessage(`✅ Tapos!\n✅ Success: ${success}\n❌ Failed: ${fail}`, threadID, messageID);
+    } catch (err) {
+      return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
     }
-    return api.sendMessage(`✅ Tapos!\n✅ Success: ${success}\n❌ Failed: ${fail}`, threadID, messageID);
   }
 
   if (sub === "setnick") {
@@ -1645,20 +1663,33 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("⚠️ Reply ka muna sa message ng tao.", threadID, messageID);
   }
 
+  // ✅ FIXED RESETNICKALL
   if (sub === "resetnickall") {
-    const threadInfo = await api.getThreadInfo(threadID);
-    const members = threadInfo.participants;
-    let success = 0, fail = 0;
-    api.sendMessage(`⏳ Nirereset ang nickname...`, threadID);
-    for (const member of members) {
-      try {
-        if (member.userID !== api.getCurrentUserID()) {
+    try {
+      const threadInfo = await api.getThreadInfo(threadID);
+      const allMembers = threadInfo.participants || [];
+      const botID = api.getCurrentUserID();
+      const members = allMembers.filter(m => m.userID !== botID);
+      
+      api.sendMessage(`⏳ Nirereset ang nickname sa ${members.length} members...`, threadID, messageID);
+      
+      let success = 0, fail = 0;
+      
+      for (let i = 0; i < members.length; i++) {
+        const member = members[i];
+        try {
           await api.changeNickname("", threadID, member.userID);
           success++;
+          if (i % 5 === 0) await new Promise(r => setTimeout(r, 300));
+        } catch (e) {
+          fail++;
         }
-      } catch (e) { fail++; }
+      }
+      
+      return api.sendMessage(`✅ Reset tapos!\n✅ Success: ${success}\n❌ Failed: ${fail}`, threadID, messageID);
+    } catch (err) {
+      return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
     }
-    return api.sendMessage(`✅ Reset tapos!\n✅ Success: ${success}\n❌ Failed: ${fail}`, threadID, messageID);
   }
 
   if (sub === "roast") {
@@ -1684,7 +1715,7 @@ module.exports.run = async function ({ api, event, args }) {
     const ts = data.threadSettings[threadID] || {};
     return api.sendMessage(
       `📊 STATUS:\n` +
-      `Auto-reply: ${data.active ? "✅ ON — 30s delay" : "❌ OFF"}\n` +
+      `Auto-reply: ${data.active ? "✅ ON — 1s delay" : "❌ OFF"}\n` +
       `Group Name Lock: ${ts.lockNameOn ? "🔒 ON" : "🔓 OFF"}\n` +
       `Lines: ${data.roasts.length}`,
       threadID, messageID
@@ -1702,9 +1733,9 @@ module.exports.run = async function ({ api, event, args }) {
   );
 };
 
-// --- EVENT HANDLER — Auto-reply + Group Name Lock ---
+// --- EVENT HANDLER — Auto-reply + Self-React + Group Name Lock ---
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, senderID, body, logMessageType, logMessageData } = event;
+  const { threadID, messageID, senderID, body, logMessageType, logMessageData } = event;
   const botID = api.getCurrentUserID();
 
   // --- GROUP NAME LOCK ---
@@ -1726,12 +1757,18 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (senderID === botID) return;
   if (body.trim().startsWith("/")) return;
 
-  // ✅ Auto-reply — 30 segundo delay
+  // ✅ Auto-reply — 1 segundo delay + Self-React ❤️
   const data = loadData();
   if (!data.active) return;
 
   setTimeout(() => {
     const randomReply = data.roasts[Math.floor(Math.random() * data.roasts.length)];
-    api.sendMessage(randomReply, threadID);
-  }, 30000);
+    api.sendMessage(randomReply, threadID, (err, info) => {
+      if (!err && info) {
+        try {
+          api.setMessageReaction("❤️", info.messageID, () => {}, true);
+        } catch (e) {}
+      }
+    });
+  }, 1000);
 };
