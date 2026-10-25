@@ -3,10 +3,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "ryuk",
-  version: "11.0.0",
+  version: "17.0.0",
   hasPermission: 0,
   credits: "sinzu & Gemini",
-  description: "Sequential 999 Lines with Interactive /silent Tag, Self-React 😆, 10s delay, and Custom Footer.",
+  description: "Glowing /silent command badge, 999 sequential lines, true self-react 😆, mention, and footer.",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/ryuk on | off | status",
@@ -22,10 +22,11 @@ const ADMIN_UIDS = [
 
 const DATA_PATH = path.join(__dirname, "ryuk_state.json");
 const SELF_EMOJI = "😆";
-const FOOTER_TEXT = "\n- gø Ryūk nīnjāgø mødē";
+const FOOTER = "\n\n\u200B- gø Ryūk nīnjāgø mødē";
 
-// BASE UNIQUE LINES
+// BASE UNIQUE ROAST LINES
 const BASE_ROASTS = [
+  "Ang galing mong manghusga pero sarili mo hindi mo kayang ituwid.",
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon.",
   "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya.",
   "Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
@@ -197,11 +198,11 @@ const BASE_ROASTS = [
   "Mag-isa ka na lang dyan habang buhay."
 ];
 
-// GENERATE EXPANDED 999 UNIQUE SEQUENTIAL ARRAY
+// GENERATE 999 SEQUENTIAL LINES WITH ZERO-WIDTH LEADING CHAR
 const TOTAL_LINES = 999;
 const ROASTS = Array.from({ length: TOTAL_LINES }, (_, i) => {
   const baseText = BASE_ROASTS[i % BASE_ROASTS.length];
-  return `Line #${i + 1}: ${baseText} 💀 💯`;
+  return `\u200B/silent Line #${i + 1}: ${baseText} 💀 💯`;
 });
 
 function getState() {
@@ -233,29 +234,29 @@ module.exports.handleEvent = async function ({ api, event }) {
   // 2. Sequential Index Pointer (1 -> 999 -> 1)
   let currentIndex = state.currentIndex || 0;
   if (currentIndex >= ROASTS.length) {
-    currentIndex = 0; // Reset back to start
+    currentIndex = 0; // Loop back
   }
 
   const currentRoast = ROASTS[currentIndex];
   
-  // Advance state to next line for next reply
+  // Advance sequence index
   state.currentIndex = currentIndex + 1;
   saveState(state);
 
-  // 3. Construct Message with Interactive /silent Tag, Mention, & Custom Footer
-  const fullText = `/silent ${currentRoast} @${senderID}${FOOTER_TEXT}`;
-  const mentionOffset = fullText.indexOf(`@${senderID}`);
+  // 3. Exact Format: /silent Line #X: Text 💀 💯 @Mention + Footer
+  const fullText = `${currentRoast} @${senderID}${FOOTER}`;
 
+  // 4. Send Message with Interactive Glowing /silent Command Badge
   api.sendMessage({
     body: fullText,
     mentions: [{ tag: `@${senderID}`, id: senderID }],
     command: {
       name: "silent",
       length: 7,
-      offset: 0
+      offset: 1
     }
   }, threadID, (err, info) => {
-    // 4. SELF-REACT (😆) on Bot's Sent Reply Message
+    // 5. TRUE SELF-REACT: Reacts with 😆 directly on the Bot's sent message
     if (!err && info && info.messageID) {
       try {
         api.setMessageReaction(SELF_EMOJI, info.messageID, () => {}, true);
@@ -275,20 +276,32 @@ module.exports.run = async function ({ api, event, args }) {
     state.active = true;
     saveState(state);
     await sleep(2000);
-    return api.sendMessage("/silent 🔥 Ryuk Sequential 999 Mode: ACTIVATED (Self-React 😆 + 10s Delay)\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
+    return api.sendMessage({
+      body: `\u200B/silent 🔥 Ryuk 999 Sequential Mode: ACTIVATED (Glowing /silent Tag + Self-React 😆 + 10s Delay)${FOOTER}`,
+      command: { name: "silent", length: 7, offset: 1 }
+    }, threadID, messageID);
   }
 
   if (sub === "off") {
     const state = getState();
     state.active = false;
     saveState(state);
-    return api.sendMessage("/silent ✅ Ryuk Sequential Mode: TURNED OFF\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
+    return api.sendMessage({
+      body: `\u200B/silent ✅ Ryuk Sequential Mode: TURNED OFF${FOOTER}`,
+      command: { name: "silent", length: 7, offset: 1 }
+    }, threadID, messageID);
   }
 
   if (sub === "status") {
     const state = getState();
-    return api.sendMessage(`/silent 📌 Ryuk Status: ${state.active ? `ACTIVE (Current Line #${(state.currentIndex || 0) + 1})` : "OFF"}\n- gø Ryūk nīnjāgø mødē`, threadID, messageID);
+    return api.sendMessage({
+      body: `\u200B/silent 📌 Ryuk Status: ${state.active ? `ACTIVE (Next Line #${(state.currentIndex || 0) + 1})` : "OFF"}${FOOTER}`,
+      command: { name: "silent", length: 7, offset: 1 }
+    }, threadID, messageID);
   }
 
-  return api.sendMessage("/silent Usage: /ryuk on | off | status\n- gø Ryūk nīnjāgø mødē", threadID, messageID);
+  return api.sendMessage({
+    body: `\u200B/silent Usage: /ryuk on | off | status${FOOTER}`,
+    command: { name: "silent", length: 7, offset: 1 }
+  }, threadID, messageID);
 };
