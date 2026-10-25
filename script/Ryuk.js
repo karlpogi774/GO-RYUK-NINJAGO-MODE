@@ -21,7 +21,7 @@ const ADMIN_UIDS = [
 ];
 
 const DATA_PATH = path.join(__dirname, "ryuk_state.json");
-const EMOJI = "😆";
+const EMOJI = "🐕";
 
 // ==============================================
 // SEQUENTIAL LINES — loops start → end → start
