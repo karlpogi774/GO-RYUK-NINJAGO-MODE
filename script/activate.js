@@ -9,8 +9,8 @@ const ADMIN_IDS = [
 
 module.exports.config = {
   name: "activate",
-  version: "7.4-admin-fixed",
-  hasPermission: 0,
+  version: "1.0.1",
+  hasPermission: 2,
   credits: "sinzu + ryuk edit",
   description: "Auto-reply + Group Name Lock + Nickname Set",
   usePrefix: true,
@@ -1871,7 +1871,8 @@ module.exports.run = async function ({ api, event, args }) {
       `Auto-reply: ${data.active ? "✅ ON — 1s delay" : "❌ OFF"}\n` +
       `Group Name Lock: ${ts.lockNameOn ? "🔒 ON" : "🔓 OFF"}\n` +
       `Lines: ${data.roasts.length}`,
-      threadID, messageID
+      threadID,
+      messageID
     );
   }
 
@@ -1882,11 +1883,12 @@ module.exports.run = async function ({ api, event, args }) {
     "/activate status — tingnan status\n" +
     "/activate setname <Name> — i-lock group name\n" +
     "/activate setnickall <Name> — i-set nickname sa lahat",
-    threadID, messageID
+    threadID,
+    messageID
   );
 };
 
-// --- EVENT HANDLER — Auto-reply + Self-React + Group Name Lock ---
+// --- EVENT HANDLER — Auto-reply + Self-React 😆 + Group Name Lock ---
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, logMessageType, logMessageData } = event;
   const botID = api.getCurrentUserID();
@@ -1908,7 +1910,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   // ❌ Skip kung walang message, sarili, o command (nagsisimula sa /)
   if (!body || body.trim() === "") return;
   if (senderID === botID) return;
-  if (body.trim().startsWith("/")) return; // ✅ Hindi magre-reply kapag may / sa simula
+  if (body.trim().startsWith("/")) return;
 
   // ✅ Auto-reply — 1 segundo delay + Self-React 😆
   const data = loadData();
