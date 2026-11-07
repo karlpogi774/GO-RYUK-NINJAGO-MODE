@@ -1,56 +1,30 @@
 const fs = require("fs");
 const path = require("path");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 module.exports.config = {
   name: "activate",
-  version: "2.3.0",
+  version: "10.0.0",
   hasPermission: 0,
-  credits: "sinzu • updated by RYUK",
-  description: "🔥 DUMMYLANDIA EDITION — Hindi mahihinto sa /silent!",
+  credits: "sinzu",
+  description: "Admin-locked AI Tagalog auto-roast with quote reply, 2s slow-motion duration, auto GC name/nicknames 'Ryuk pogi', and FB auto-commenter.",
   usePrefix: true,
   commandCategory: "Fun",
+  usages: "/activate on | off | status | setnick | setgname | autocomment <postID> <count>",
   cooldowns: 5
 };
 
-// 🔒 ADMIN UIDS
-const ADMIN_UIDS = [
-  "61595507156493",
-  "61595398037273",
-  "61595932841761"
-];
+// =========================================================
+// ADMIN ID LOCK & GEMINI API KEY
+const ADMIN_ID = "61595932841761";
+const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+// =========================================================
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
-
-// 😂 RANTER EMOJIS
-const REACT_EMOJIS = ["🤡", "💩", "😹", "🤌", "🙄", "💀", "🗑️", "🤦"];
-
-// 🗣️ PINOY RANTER LINES
-const ROASTS = [
-  "🤡 Luh? Akala mo naman may sense sinabi mo",
-  "💀 Utak mo parang basura, tapos ikaw pa may ganang magsalita",
-  "🗑️ Pwede ba mag log out ka muna? Nasasaktan mata ko sa tipa mo",
-  "😹 Grabe confidence pero yung laman ng utak hanggang tuhod lang",
-  "🤌 Wag ka magpanggap matalino, halata naman wala kang maisip",
-  "🙄 Ang daming sinabi pero wala namang kwenta parang ikaw",
-  "💩 Sayang lang data mo dyan, wala naman papuntang utak yan",
-  "🤦 Tumahimik ka na lang mas okay pa, di ka mapapahiya",
-  "🔥 Ikaw yung patunay na hindi lahat nabigyan ng utak",
-  "💀 Tapos ka na ba? Pwede ka na umalis, umiikot mundo ko sa kalokohan mo",
-  "🤡 Wag kang magaling, alam nating ikaw ang pinaka-dito sa atin",
-  "🗑️ Salita mo parang basura — itatapon ko lang agad",
-  "😹 Sa dinami dami ng pwedeng sabihin, yan pa ang napili mo?",
-  "🤌 Isipin mo muna bago mo pindutin send, please lang",
-  "🙄 Ang gulo ng isip mo parang hindi nagalit na chat",
-  "💀 Pag nagsasalita ka parang nawawalan ng pag asa ang mundo",
-  "🤡 Dummy detected 🚨 wag ka na magtago, halata ka na",
-  "🗑️ Quality zero pero confidence unlimited — ikaw talaga 'to",
-  "😹 Nagbasa ka ba o galing lang yan sa hangin?",
-  "🤦 Sana next life may utak ka na, para hindi ganito kalaman ang chat mo"
-];
-
-function isAdmin(uid) {
-  return ADMIN_UIDS.includes(uid);
-}
+const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎"];
 
 function loadData() {
   try {
@@ -65,43 +39,94 @@ function saveData(data) {
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
 
-const isProcessing = new Set();
+function isActive() {
+  const data = loadData();
+  return data.active === true;
+}
+
+// ===== FUNCTION PARA SA AI TAGALOG ROAST GENERATION =====
+async function generateAIRoast(userMessage) {
+  try {
+    const prompt = `Ikaw si "Ryuk pogi", isang basagero at mapangasir na kaibigan sa Facebook group chat. 
+    Bumara ka nang maikli at nakakatawang Tagalog o Taglish reply batay sa chat ng tao na ito: "${userMessage}".
+    Mga alituntunin:
+    1. 1 hanggang 2 pangungusap lang (maximum 20 words).
+    2. Gumamit ng modernong Tagalog chat slang (lods, bro, wtf, 💀, 🤣, etc.).
+    3. Huwag maging sobrang bastos, dapat pang-asar lang na nakakatawa.`;
+
+    const result = await aiModel.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (error) {
+    console.error("AI Generation Error:", error);
+    const fallbacks = [
+      "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
+      "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣",
+      "Bro, isip muna bago pindot ng send button, napapahalata ka eh.",
+      "Confidence level: 100%. Sense level: 0%."
+    ];
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+  }
+}
+
+// ===== SLOW-MOTION & ANTI-SPAM SYSTEM =====
+const lastResponseTime = new Map();
+const COOLDOWN_DELAY = 2000; // 2 Seconds Slow Motion Duration for Chat
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function getRandomDelay(minSec, maxSec) {
+  return Math.floor(Math.random() * (maxSec - minSec + 1) + minSec) * 1000;
+}
 
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, senderID, body } = event;
+  const { threadID, senderID, body, messageID, logMessageType, logMessageData } = event;
 
-  // ❌ HUWAG PAPATIN SA /silent — IGNORING IT
-  if (body && body.trim().toLowerCase() === "/silent") {
-    // ✅ HINDI MAG-STOP — magre-reply pa rin sa susunod na message!
-    return api.sendMessage("😹 /silent? Hindi ako natitinag pre — RANTING MODE ON PA RIN 💯", threadID);
+  if (!isActive()) return;
+
+  // AUTO ENFORCE GC NAME CHANGE TO "Ryuk pogi"
+  if (logMessageType === "log:thread-name" || logMessageType === "log:subscribe" || logMessageType === "log:unsubscribe") {
+    if (logMessageData && logMessageData.name !== "Ryuk pogi") {
+      api.setTitle("Ryuk pogi", threadID, (err) => {
+        if (err) console.error("Auto GC name enforcement failed:", err);
+      });
+    }
+    return;
   }
 
-  if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
-  
-  const data = loadData();
-  if (!data.active) return;
-  if (isProcessing.has(threadID)) return;
-  
-  isProcessing.add(threadID);
+  // Ignore empty messages, bot's own messages, and the /activate command itself
+  if (!body || senderID === api.getCurrentUserID() || body.toLowerCase().startsWith("/activate")) return;
+
+  const now = Date.now();
+  const lastTime = lastResponseTime.get(threadID) || 0;
+
+  // SLOW MOTION 2-SECOND COOLDOWN CHECK
+  if (now - lastTime < COOLDOWN_DELAY) {
+    return;
+  }
+
+  lastResponseTime.set(threadID, now);
 
   try {
-    const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
+    const aiRoastReply = await generateAIRoast(body);
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    setTimeout(() => {
-      api.sendMessage(randomRoast, threadID, (err, info) => {
-        if (!err && info?.messageID) {
-          api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
-            if (reactErr) console.error("React error:", reactErr);
-          }, true);
-        }
-        isProcessing.delete(threadID);
-      });
-    }, 3000);
+    await sleep(2000);
+
+    // AUTO REPLY WITH DIRECT QUOTE
+    api.sendMessage({
+      body: aiRoastReply,
+      mentions: [{ tag: `@${senderID}`, id: senderID }]
+    }, threadID, async (err, info) => {
+      if (!err && info && info.messageID) {
+        await sleep(800);
+        api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
+          if (reactErr) console.error("Self-react error:", reactErr);
+        }, true);
+      }
+    }, messageID);
   } catch (error) {
-    console.error("Error:", error);
-    isProcessing.delete(threadID);
+    console.error("Auto-reply error:", error);
   }
 };
 
@@ -111,45 +136,134 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  if (!isAdmin(senderID)) {
-    return api.sendMessage("❌ Wala kang permission gamitin 'to, admin lang pwede!", threadID, messageID);
+  // ADMIN PERMISSION CHECK
+  if (senderID !== ADMIN_ID) {
+    return api.sendMessage("❌ Ops! Si Boss Admin (ID: 61595932841761) lang ang pwedeng gumamit ng command na ito.", threadID, messageID);
   }
 
+  // Turn ON Infinite Duration with AI Mode
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
+    data.activatedAt = Date.now();
     saveData(data);
+
+    api.setTitle("Ryuk pogi", threadID, () => {});
+
     return api.sendMessage(
-      "🔥 DUMMYLANDIA AUTO-RANT: ON ✅\n\n" +
-      "Mode: HINDI MATITINAG 💪\n" +
-      "/silent won't stop me 😹💯\n" +
-      "/activate off — only admins can stop",
-      threadID, messageID
+      `🔥 AI-POWERED TAGALOG AUTO-ROAST: ON\n\n` +
+      `👑 Authorized Admin: 61595932841761\n` +
+      `AI Engine: Gemini Flash (Dynamic Tagalog lines)\n` +
+      `Duration: INFINITE ♾️\n` +
+      `Mode: Reply to Message (Direct Quote)\n` +
+      `Anti-Spam Delay: SLOW MOTION (2s Cooldown)\n` +
+      `Auto GC Name Enforcement: ACTIVE ("Ryuk pogi")\n\n` +
+      `Gamitin ang /activate off para i-stop.`,
+      threadID,
+      messageID
     );
   }
 
+  // Turn OFF
   if (sub === "off") {
     data.active = false;
     saveData(data);
-    return api.sendMessage("✅ DUMMYLANDIA Auto-rant turned OFF — by Admin only 🔒", threadID, messageID);
+    return api.sendMessage("✅ Naka-OFF na ang AI Tagalog auto-roast.", threadID, messageID);
   }
 
+  // Check Status
   if (sub === "status") {
+    if (!data.active) {
+      return api.sendMessage("Naka-OFF ang AI auto-roast sa kasalukuyan.", threadID, messageID);
+    }
     return api.sendMessage(
-      data.active
-        ? "🔥 RANTING MODE ACTIVE — HINDI MATITINAG 💪😹"
-        : "😴 Currently OFF",
-      threadID, messageID
+      `🔥 Ang AI Tagalog Auto-roast ay ACTIVE (INFINITE ♾️)\n` +
+      `Engine: Real-time Gemini AI Response\n` +
+      `Anti-Spam: 2s Slow Motion Cooldown\n` +
+      `Auto GC Name: "Ryuk pogi"`,
+      threadID,
+      messageID
     );
   }
 
+  // Set All Members' Nicknames to "Ryuk pogi"
+  if (sub === "setnick") {
+    try {
+      const threadInfo = await api.getThreadInfo(threadID);
+      const participantIDs = threadInfo.participantIDs;
+
+      api.sendMessage(`⏳ Binabago ang nicknames ng lahat ng ${participantIDs.length} miyembro papuntang "Ryuk pogi"...`, threadID);
+
+      for (const userID of participantIDs) {
+        await sleep(500);
+        api.changeNickname("Ryuk pogi", threadID, userID, (err) => {
+          if (err) console.error(`Failed nickname change for ${userID}:`, err);
+        });
+      }
+      return api.sendMessage("✅ Tagumpay na nabago ang lahat ng nicknames papuntang 'Ryuk pogi'.", threadID, messageID);
+    } catch (e) {
+      return api.sendMessage("❌ Bigo sa pagbago ng nicknames. Siguraduhing admin ang bot.", threadID, messageID);
+    }
+  }
+
+  // Manual Set Group Name to "Ryuk pogi"
+  if (sub === "setgname") {
+    api.setTitle("Ryuk pogi", threadID, (err) => {
+      if (err) {
+        return api.sendMessage("❌ Bigo sa pagbago ng pangalan ng group chat.", threadID, messageID);
+      }
+      return api.sendMessage("✅ Ang pangalan ng GC ay pinalitan na sa 'Ryuk pogi'.", threadID, messageID);
+    });
+    return;
+  }
+
+  // ===== SAFE FACEBOOK POST AUTO-COMMENTER =====
+  if (sub === "autocomment") {
+    const targetPostID = args[1];
+    const amount = parseInt(args[2]) || 5;
+
+    if (!targetPostID) {
+      return api.sendMessage("❌ Paki-lagay ang Post ID!\nHalimbawa: /activate autocomment 123456789 5", threadID, messageID);
+    }
+
+    if (amount > 15) {
+      return api.sendMessage("⚠️ Para maiwasan ang Facebook ban, maximum ng 15 comments lang bawat batch.", threadID, messageID);
+    }
+
+    api.sendMessage(`🚀 Magsisimula nang mag-comment ng ${amount} AI-generated Tagalog lines sa FB Post ID: ${targetPostID}...`, threadID, messageID);
+
+    (async () => {
+      for (let i = 0; i < amount; i++) {
+        const aiComment = await generateAIRoast("Maglagay ng pambara o nakakatawang Tagalog comment sa post na 'to.");
+        
+        const safeDelay = getRandomDelay(4, 8);
+        await sleep(safeDelay);
+
+        if (typeof api.postComment === "function") {
+          api.postComment(aiComment, targetPostID, (err) => {
+            if (err) console.error(`FB Auto-Comment Error:`, err);
+          });
+        } else {
+          api.sendMessage(aiComment, targetPostID, (err) => {
+            if (err) console.error(`FB Comment Error:`, err);
+          });
+        }
+      }
+      api.sendMessage(`✅ Tapos na ang pag-comment ng ${amount} AI Tagalog lines sa FB post!`, threadID);
+    })();
+
+    return;
+  }
+
   return api.sendMessage(
-    "📖 Commands:\n" +
-    "/activate on — Start 🔥\n" +
-    "/activate off — Stop 😴\n" +
-    "/activate status — Check 📊\n\n" +
-    "💪 /silent won't stop me!",
-    threadID, messageID
+    `Mga Paggamit (Usage - Admin Only):\n` +
+    `/activate on — Simulan ang AI Tagalog auto-roast (2s Slow Motion)\n` +
+    `/activate off — Itigil ang auto-roast\n` +
+    `/activate status — Tignan ang status\n` +
+    `/activate setnick — Gawing 'Ryuk pogi' ang lahat ng nicknames\n` +
+    `/activate setgname — Gawing 'Ryuk pogi' ang pangalan ng GC\n` +
+    `/activate autocomment <postID> <count> — Mag-comment ng AI Tagalog lines sa FB Post`,
+    threadID,
+    messageID
   );
 };
-    
