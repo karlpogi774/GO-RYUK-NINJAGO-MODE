@@ -3,28 +3,28 @@ const path = require("path");
 
 module.exports.config = {
   name: "activate",
-  version: "2.2.0",
+  version: "2.3.0",
   hasPermission: 0,
   credits: "sinzu • updated by RYUK",
-  description: "🔥 DUMMYLANDIA EDITION — Auto-rant, nickname/group manager, anti-spam & self-react.",
+  description: "🔥 DUMMYLANDIA EDITION — Hindi mahihinto sa /silent!",
   usePrefix: true,
   commandCategory: "Fun",
   cooldowns: 5
 };
 
-// 🔒 ADMIN UIDS — ONLY THESE CAN USE COMMANDS
+// 🔒 ADMIN UIDS
 const ADMIN_UIDS = [
   "61595507156493",
   "61595398037273",
-  "61595932841761"   // ✅ NEW ADMIN ADDED
+  "61595932841761"
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-// 😂 RANTER EMOJIS — DUMMYLANDIA VIBES
+// 😂 RANTER EMOJIS
 const REACT_EMOJIS = ["🤡", "💩", "😹", "🤌", "🙄", "💀", "🗑️", "🤦"];
 
-// 🗣️ PINOY RANTER LINES — DUMMYLANDIA EDITION
+// 🗣️ PINOY RANTER LINES
 const ROASTS = [
   "🤡 Luh? Akala mo naman may sense sinabi mo",
   "💀 Utak mo parang basura, tapos ikaw pa may ganang magsalita",
@@ -48,7 +48,6 @@ const ROASTS = [
   "🤦 Sana next life may utak ka na, para hindi ganito kalaman ang chat mo"
 ];
 
-// 🔒 CHECK IF USER IS ADMIN
 function isAdmin(uid) {
   return ADMIN_UIDS.includes(uid);
 }
@@ -66,19 +65,22 @@ function saveData(data) {
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
 
-function isActive() {
-  const data = loadData();
-  return data.active === true;
-}
-
 const isProcessing = new Set();
 
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body } = event;
 
+  // ❌ HUWAG PAPATIN SA /silent — IGNORING IT
+  if (body && body.trim().toLowerCase() === "/silent") {
+    // ✅ HINDI MAG-STOP — magre-reply pa rin sa susunod na message!
+    return api.sendMessage("😹 /silent? Hindi ako natitinag pre — RANTING MODE ON PA RIN 💯", threadID);
+  }
+
   if (!body || body.startsWith("/") || senderID === api.getCurrentUserID()) return;
-  if (!isActive()) return;
+  
+  const data = loadData();
+  if (!data.active) return;
   if (isProcessing.has(threadID)) return;
   
   isProcessing.add(threadID);
@@ -87,14 +89,16 @@ module.exports.handleEvent = async function ({ api, event }) {
     const randomRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    api.sendMessage(randomRoast, threadID, (err, info) => {
-      if (!err && info?.messageID) {
-        api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
-          if (reactErr) console.error("React error:", reactErr);
-        }, true);
-      }
-      isProcessing.delete(threadID);
-    });
+    setTimeout(() => {
+      api.sendMessage(randomRoast, threadID, (err, info) => {
+        if (!err && info?.messageID) {
+          api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
+            if (reactErr) console.error("React error:", reactErr);
+          }, true);
+        }
+        isProcessing.delete(threadID);
+      });
+    }, 3000);
   } catch (error) {
     console.error("Error:", error);
     isProcessing.delete(threadID);
@@ -107,7 +111,6 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // ❌ BLOCK NON-ADMINS
   if (!isAdmin(senderID)) {
     return api.sendMessage("❌ Wala kang permission gamitin 'to, admin lang pwede!", threadID, messageID);
   }
@@ -115,13 +118,12 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
-    data.activatedAt = Date.now();
     saveData(data);
     return api.sendMessage(
       "🔥 DUMMYLANDIA AUTO-RANT: ON ✅\n\n" +
-      "Mode: INFINITE ♾️ | Ranter: ACTIVE\n" +
-      "Anti-spam & Auto-react: ENABLED\n" +
-      "/activate off — to stop",
+      "Mode: HINDI MATITINAG 💪\n" +
+      "/silent won't stop me 😹💯\n" +
+      "/activate off — only admins can stop",
       threadID, messageID
     );
   }
@@ -129,51 +131,25 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "off") {
     data.active = false;
     saveData(data);
-    return api.sendMessage("✅ DUMMYLANDIA Auto-rant turned OFF.", threadID, messageID);
+    return api.sendMessage("✅ DUMMYLANDIA Auto-rant turned OFF — by Admin only 🔒", threadID, messageID);
   }
 
   if (sub === "status") {
     return api.sendMessage(
       data.active
-        ? "🔥 DUMMYLANDIA Auto-rant is ACTIVE — RANTING MODE ON 💯"
-        : "😴 DUMMYLANDIA Auto-rant is currently OFF.",
+        ? "🔥 RANTING MODE ACTIVE — HINDI MATITINAG 💪😹"
+        : "😴 Currently OFF",
       threadID, messageID
     );
   }
 
-  if (sub === "setnick") {
-    try {
-      const threadInfo = await api.getThreadInfo(threadID);
-      const total = threadInfo.participantIDs.length;
-      api.sendMessage(`⏳ Binabago nickname ng ${total} members...`, threadID);
-      
-      for (const uid of threadInfo.participantIDs) {
-        api.changeNickname("DUMMY • LANDIA", threadID, uid, (err) => {
-          if (err) console.error(`Fail ${uid}:`, err);
-        });
-      }
-      return api.sendMessage("✅ Lahat ng nickname naging: DUMMY • LANDIA", threadID, messageID);
-    } catch (e) {
-      return api.sendMessage("❌ Error — siguraduhin admin ang bot!", threadID, messageID);
-    }
-  }
-
-  if (sub === "setgname") {
-    api.setTitle("🏠 DUMMYLANDIA 🏠", threadID, (err) => {
-      if (err) return api.sendMessage("❌ Error — admin permission needed!", threadID, messageID);
-      return api.sendMessage("✅ Group name changed to: 🏠 DUMMYLANDIA 🏠", threadID, messageID);
-    });
-    return;
-  }
-
   return api.sendMessage(
     "📖 Commands:\n" +
-    "/activate on — Start ranting 🔥\n" +
+    "/activate on — Start 🔥\n" +
     "/activate off — Stop 😴\n" +
-    "/activate status — Check status 📊\n" +
-    "/activate setnick — All nick → DUMMY • LANDIA 🏷️\n" +
-    "/activate setgname — Group → 🏠 DUMMYLANDIA 🏠",
+    "/activate status — Check 📊\n\n" +
+    "💪 /silent won't stop me!",
     threadID, messageID
   );
 };
-               
+    
