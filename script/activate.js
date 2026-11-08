@@ -1,23 +1,28 @@
 const fs = require("fs");
 const path = require("path");
 
-// ===== IMPORT ECLIPSE MODULES =====
-const { calculateHumanDelay } = require("./human-delay");
-const { humanize } = require("./human-mimic");
-const { withTyping } = require("./human-typing");
-const { rememberBanatReply, getUnusedReply } = require("./banat-memory");
-const { getBanatConversationReply } = require("./triggers");
-const { isDuplicateMessage } = require("./message-dedupe");
+// ===== IMPORT ALL ECLIPSE MODULES =====
+const { calculateHumanDelay } = require("../human-delay");
+const { humanize } = require("../human-mimic");
+const { withTyping } = require("../human-typing");
+const { rememberBanatReply, getUnusedReply, isReplyUsedRecently, clearThreadHistory } = require("../banat-memory");
+const { getBanatConversationReply } = require("../triggers");
+const { isDuplicateMessage } = require("../message-dedupe");
+const { shouldReplyToMessage, mentionsBot } = require("../banat-targeting");
+const { shuffleArray, pickWeighted, seededRandom, clamp } = require("../banat-randomizer");
+const { applyAbbreviations } = require("../banat-abbreviations");
+const { isGreeting, isFarewell, isThankYou } = require("../banat-social");
+const { isBotAdmin } = require("../admin-access");
 
 module.exports.config = {
   name: "activate",
-  version: "10.1.0",
+  version: "11.0.0",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
   description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/activate on | off | status | add <text> | listlines | setnick | setgname",
+  usages: "/activate on | off | status | add <text> | listlines | setnick | clearhistory",
   cooldowns: 5
 };
 
@@ -27,7 +32,7 @@ const AUTHORIZED_UIDS = [
   "61595932841761"
 ];
 
-const DATA_PATH = path.join(__dirname, "activate_data.json");
+const DATA_PATH = path.join(__dirname, "..", "data", "activate_data.json");
 
 // Emojis for auto self-react
 const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎"];
@@ -57,8 +62,14 @@ const DEFAULT_TAGALOG_ROASTS = [
 ];
 
 // ===== DATA MANAGEMENT =====
+function ensureDataDir() {
+  const dataDir = path.dirname(DATA_PATH);
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+}
+
 function loadData() {
   try {
+    ensureDataDir();
     if (fs.existsSync(DATA_PATH)) {
       const parsed = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
       if (!parsed.roasts || parsed.roasts.length === 0) {
@@ -71,6 +82,7 @@ function loadData() {
 }
 
 function saveData(data) {
+  ensureDataDir();
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
 
@@ -100,25 +112,19 @@ function getSequentialReply(threadID, replies) {
 
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, senderID, body, messageID, logMessageType, logMessageData } = event;
+  const { threadID, senderID, body, messageID } = event;
+  const botID = api.getCurrentUserID();
 
   if (!isActive()) return;
 
   // Skip duplicate messages
   if (isDuplicateMessage(messageID)) return;
 
-  // AUTO ENFORCE GC NAME
-  if (logMessageType === "log:thread-name" || logMessageType === "log:subscribe" || logMessageType === "log:unsubscribe") {
-    if (logMessageData && logMessageData.name !== "Ryuk pogi") {
-      api.setTitle("Ryuk pogi", threadID, (err) => {
-        if (err) console.error("Auto GC name enforcement failed:", err);
-      });
-    }
-    return;
-  }
+  // Use targeting helper to decide if we should reply
+  if (!shouldReplyToMessage(body, senderID, botID)) return;
 
   // Ignore own messages & command
-  if (!body || senderID === api.getCurrentUserID() || body.toLowerCase().startsWith("/activate")) return;
+  if (body.toLowerCase().startsWith("/activate")) return;
 
   const now = Date.now();
   const lastTime = lastResponseTime.get(threadID) || 0;
@@ -136,24 +142,33 @@ module.exports.handleEvent = async function ({ api, event }) {
     const data = loadData();
     const roastsList = data.roasts || DEFAULT_TAGALOG_ROASTS;
 
-    // Step 1: Check triggers first
-    let replyText = getBanatConversationReply(body, threadID);
+    // Step 1: Check social patterns first
+    let replyText = null;
+    if (isGreeting(body)) replyText = "Oo, nandito ako. Anong kailangan mo? 😏";
+    else if (isThankYou(body)) replyText = "Walang anuman. 😌";
+    else if (isFarewell(body)) replyText = "Sige, ingat. 👋";
     
-    // Step 2: Fallback to sequential roasts — avoid repeats
+    // Step 2: Check keyword triggers
+    if (!replyText) replyText = getBanatConversationReply(body, threadID);
+    
+    // Step 3: Fallback to sequential roasts — avoid repeats
     if (!replyText) {
       const candidate = getSequentialReply(threadID, roastsList);
       replyText = getUnusedReply(threadID, [candidate, ...roastsList.filter(r => r !== candidate)]);
       rememberBanatReply(threadID, replyText);
     }
 
-    // Step 3: Humanize the text
+    // Step 4: Humanize the text
     replyText = humanize(replyText, {
       abbreviate: false,
       typos: false,
       punctuation: true
     });
 
-    // Step 4: Calculate natural delay
+    // Optional: Apply abbreviations for more natural chat
+    // replyText = applyAbbreviations(replyText, 0.2);
+
+    // Step 5: Calculate natural delay
     const delayResult = calculateHumanDelay(replyText, {
       incomingText: body,
       recentMessages: recent,
@@ -162,7 +177,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    // Step 5: Send with typing indicator + natural delay
+    // Step 6: Send with typing indicator + natural delay
     await withTyping(api, threadID, delayResult.totalMs, async () => {
       api.sendMessage({
         body: replyText,
@@ -186,7 +201,7 @@ module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
 
   // 🔒 ADMIN LOCK
-  if (!AUTHORIZED_UIDS.includes(senderID)) {
+  if (!isBotAdmin(senderID, AUTHORIZED_UIDS)) {
     return api.sendMessage("❌ Restricted: Ikaw ay hindi awtorisadong admin. Ang mga nakarehistrong Bot Owners lang ang pwedeng mag-control ng bot.", threadID, messageID);
   }
 
@@ -198,14 +213,13 @@ module.exports.run = async function ({ api, event, args }) {
     data.activatedBy = senderID;
     data.activatedAt = Date.now();
     saveData(data);
-    api.setTitle("Ryuk pogi", threadID, () => {});
     return api.sendMessage(
       `🔥 TAGALOG GLOBAL AUTO-ROAST: ON\n\n` +
-      `Mode: Sequential + Trigger replies ✅\n` +
+      `Mode: Sequential + Triggers + Social ✅\n` +
       `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Spam: 1.8s cooldown\n` +
       `Anti-Duplicate: ENABLED ✅\n` +
-      `Auto GC Name: "Ryuk pogi"\n` +
+      `Memory: Avoids repeat replies ✅\n` +
       `Security: MULTI-ADMIN LOCKED 🔒\n\n` +
       `/activate off para itigil.`,
       threadID,
@@ -226,9 +240,10 @@ module.exports.run = async function ({ api, event, args }) {
     const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
     return api.sendMessage(
       `🔥 ACTIVE — ECLIPSE AUTO-ROAST\n` +
-      `Mode: Sequential + Keyword Triggers\n` +
+      `Mode: Sequential + Triggers + Social\n` +
       `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Dupe + Anti-Spam: ENABLED ✅\n` +
+      `Memory System: ENABLED ✅\n` +
       `Kabuuan ng mga linya: ${totalLines}\n` +
       `Admin Status: Verified 🔒`,
       threadID,
@@ -254,6 +269,12 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage(msg, threadID, messageID);
   }
 
+  if (sub === "clearhistory") {
+    clearThreadHistory(threadID);
+    threadSequence.delete(threadID);
+    return api.sendMessage("✅ Kasaysayan ng mga reply na-clear na.", threadID, messageID);
+  }
+
   if (sub === "setnick") {
     try {
       const threadInfo = await api.getThreadInfo(threadID);
@@ -271,14 +292,6 @@ module.exports.run = async function ({ api, event, args }) {
     }
   }
 
-  if (sub === "setgname") {
-    api.setTitle("Ryuk pogi", threadID, (err) => {
-      if (err) return api.sendMessage("❌ Hindi mabago ang pangalan ng GC.", threadID, messageID);
-      return api.sendMessage("✅ GC name: 'Ryuk pogi'", threadID, messageID);
-    });
-    return;
-  }
-
   return api.sendMessage(
     `Mga Command:\n` +
     `/activate on — Simulan\n` +
@@ -286,9 +299,10 @@ module.exports.run = async function ({ api, event, args }) {
     `/activate status — Tingnan status\n` +
     `/activate add <text> — Magdagdag ng linya\n` +
     `/activate listlines — Ilista lahat\n` +
-    `/activate setnick — Gawing 'Ryuk pogi' ang lahat ng nick\n` +
-    `/activate setgname — Palitan GC name`,
+    `/activate clearhistory — I-reset ang reply sequence\n` +
+    `/activate setnick — Gawing 'Ryuk pogi' ang lahat ng nick`,
     threadID,
     messageID
   );
 };
+  
