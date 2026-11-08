@@ -24,8 +24,7 @@ module.exports.config = {
 // 🔒 AUTHORIZED OWNER & ADMIN UIDS
 const AUTHORIZED_UIDS = [
   "61594325727109",
-  "61595932841761",
-  "61596315422605"
+  "61595932841761"
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
