@@ -1,12 +1,19 @@
 const fs = require("fs");
 const path = require("path");
 
+// ===== IMPORT ECLIPSE MODULES =====
+const { calculateHumanDelay } = require("./human-delay");
+const { humanize } = require("./human-mimic");
+const { withTyping } = require("./human-typing");
+const { pickBanatReply, rememberBanatReply } = require("./banat-memory");
+const { getBanatConversationReply } = require("./triggers");
+
 module.exports.config = {
   name: "activate",
-  version: "8.2.0",
+  version: "10.0.0",
   hasPermission: 0,
-  credits: "sinzu",
-  description: "Infinite global Tagalog auto-roast with targeted quote reply, 2s slow-motion duration, custom lines, auto-enforcing GC name 'Ryuk pogi', mass nickname changes, and Multi-Admin UID Lock.",
+  credits: "sinzu & Eclipse",
+  description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Multi-Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/activate on | off | status | add <text> | listlines | setnick | setgname",
@@ -15,8 +22,8 @@ module.exports.config = {
 
 // 🔒 AUTHORIZED OWNER & ADMIN UIDS
 const AUTHORIZED_UIDS = [
-  "61594325727109", // Main Owner (Ryuk)
-  "61595932841761"  // Additional Admin ID
+  "61594325727109",
+  "61595932841761"
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
@@ -40,20 +47,26 @@ const DEFAULT_TAGALOG_ROASTS = [
   "May group chat restraint order ka na ba? Kasi lapit na kita i-report.",
   "Tigilan mo na 'yan, pati 'yung keyboard mo sumusuko na sa'yo.",
   "Confidence level: 100%. Sense level: 0%.",
-  "Sige lang, ipagpatuloy mo 'yan... hanggang sa wala nang makipag-usap sa'yo."
+  "Sige lang, ipagpatuloy mo 'yan... hanggang sa wala nang makipag-usap sa'yo.",
+  "Mukhang naubusan na ng brain cells, pahinga ka muna.",
+  "Ang daldal mo pero wala namang laman. Classic.",
+  "Hindi lahat kailangan sagutin, lalo na ikaw.",
+  "Pwede bang mag-pause ka muna? Sayang lang data mo.",
+  "Ang hirap kausap, parang pader na nagsasalita."
 ];
 
+// ===== DATA MANAGEMENT =====
 function loadData() {
   try {
     if (fs.existsSync(DATA_PATH)) {
       const parsed = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
       if (!parsed.roasts || parsed.roasts.length === 0) {
-        parsed.roasts = DEFAULT_TAGALOG_ROASTS;
+        parsed.roasts = [...DEFAULT_TAGALOG_ROASTS];
       }
       return parsed;
     }
   } catch {}
-  return { active: false, activatedBy: null, roasts: DEFAULT_TAGALOG_ROASTS };
+  return { active: false, activatedBy: null, roasts: [...DEFAULT_TAGALOG_ROASTS] };
 }
 
 function saveData(data) {
@@ -65,11 +78,24 @@ function isActive() {
   return data.active === true;
 }
 
-// ===== SLOW-MOTION & ANTI-SPAM SYSTEM =====
+// ===== ANTI-SPAM SYSTEM =====
 const lastResponseTime = new Map();
-const COOLDOWN_DELAY = 2000; // 2 Seconds Slow Motion Duration
+const recentMessageCount = new Map();
+const COOLDOWN_DELAY = 1800;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ===== SEQUENTIAL LINE PICKER =====
+const threadSequence = new Map();
+function getSequentialReply(threadID, replies) {
+  const list = replies || DEFAULT_TAGALOG_ROASTS;
+  if (!threadSequence.has(threadID)) threadSequence.set(threadID, 0);
+  let idx = threadSequence.get(threadID);
+  const line = list[idx];
+  idx = (idx + 1) % list.length;
+  threadSequence.set(threadID, idx);
+  return line;
+}
 
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
@@ -77,7 +103,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!isActive()) return;
 
-  // AUTO ENFORCE GC NAME CHANGE TO "Ryuk pogi"
+  // AUTO ENFORCE GC NAME
   if (logMessageType === "log:thread-name" || logMessageType === "log:subscribe" || logMessageType === "log:unsubscribe") {
     if (logMessageData && logMessageData.name !== "Ryuk pogi") {
       api.setTitle("Ryuk pogi", threadID, (err) => {
@@ -87,41 +113,64 @@ module.exports.handleEvent = async function ({ api, event }) {
     return;
   }
 
-  // Ignore empty messages, bot's own messages, and the /activate command
+  // Ignore own messages & command
   if (!body || senderID === api.getCurrentUserID() || body.toLowerCase().startsWith("/activate")) return;
 
   const now = Date.now();
   const lastTime = lastResponseTime.get(threadID) || 0;
 
-  // SLOW MOTION: 2-Second Cooldown Check
-  if (now - lastTime < COOLDOWN_DELAY) {
-    return;
-  }
-
-  // Lock thread timestamp
+  // Anti-spam check
+  if (now - lastTime < COOLDOWN_DELAY) return;
   lastResponseTime.set(threadID, now);
+
+  // Track recent messages for timing context
+  const recent = recentMessageCount.get(threadID) || 0;
+  recentMessageCount.set(threadID, Math.min(10, recent + 1));
+  setTimeout(() => recentMessageCount.set(threadID, Math.max(0, recentMessageCount.get(threadID) - 1)), 30000);
 
   try {
     const data = loadData();
-    const roastsList = data.roasts && data.roasts.length > 0 ? data.roasts : DEFAULT_TAGALOG_ROASTS;
+    const roastsList = data.roasts || DEFAULT_TAGALOG_ROASTS;
 
-    const randomRoast = roastsList[Math.floor(Math.random() * roastsList.length)];
+    // Step 1: Check triggers first
+    let replyText = getBanatConversationReply(body, threadID);
+    
+    // Step 2: Fallback to sequential roasts
+    if (!replyText) {
+      replyText = getSequentialReply(threadID, roastsList);
+      rememberBanatReply(threadID, replyText);
+    }
+
+    // Step 3: Humanize the text
+    replyText = humanize(replyText, {
+      abbreviate: false,
+      typos: false,
+      punctuation: true
+    });
+
+    // Step 4: Calculate natural delay
+    const delayResult = calculateHumanDelay(replyText, {
+      incomingText: body,
+      recentMessages: recent,
+      mode: "normal"
+    });
+
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    await sleep(2000);
-
-    // AUTO REPLY WITH DIRECT QUOTE
-    api.sendMessage({
-      body: randomRoast,
-      mentions: [{ tag: `@${senderID}`, id: senderID }]
-    }, threadID, async (err, info) => {
-      if (!err && info && info.messageID) {
-        await sleep(800);
-        api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
-          if (reactErr) console.error("Self-react error:", reactErr);
-        }, true);
-      }
-    }, messageID);
+    // Step 5: Send with typing indicator + natural delay
+    await withTyping(api, threadID, delayResult.totalMs, async () => {
+      api.sendMessage({
+        body: replyText,
+        mentions: [{ tag: `@${senderID}`, id: senderID }]
+      }, threadID, async (err, info) => {
+        if (!err && info && info.messageID) {
+          await sleep(400 + Math.floor(Math.random() * 400));
+          api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
+            if (reactErr) console.error("Self-react error:", reactErr);
+          }, true);
+        }
+      }, messageID);
+    });
   } catch (error) {
     console.error("Auto-reply error:", error);
   }
@@ -131,7 +180,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
 
-  // 🔒 HARD LOCK BY AUTHORIZED UIDS
+  // 🔒 ADMIN LOCK
   if (!AUTHORIZED_UIDS.includes(senderID)) {
     return api.sendMessage("❌ Restricted: Ikaw ay hindi awtorisadong admin. Ang mga nakarehistrong Bot Owners lang ang pwedeng mag-control ng bot.", threadID, messageID);
   }
@@ -139,119 +188,102 @@ module.exports.run = async function ({ api, event, args }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // Turn ON Infinite Duration (Tagalog Mode)
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
     data.activatedAt = Date.now();
     saveData(data);
-
-    // Auto-set the GC name immediately
     api.setTitle("Ryuk pogi", threadID, () => {});
-
     return api.sendMessage(
       `🔥 TAGALOG GLOBAL AUTO-ROAST: ON\n\n` +
-      `Duration: INFINITE ♾️\n` +
-      `Mode: Auto Reply (Direct Quote)\n` +
-      `Anti-Spam Delay: SLOW MOTION (2s Cooldown)\n` +
-      `Auto GC Name Enforcement: ACTIVE ("Ryuk pogi")\n` +
+      `Mode: Sequential + Trigger replies ✅\n` +
+      `Timing: Human Delay (natural typing speed)\n` +
+      `Typing Indicator: ENABLED ✅\n` +
+      `Anti-Spam: 1.8s cooldown\n` +
+      `Auto GC Name: "Ryuk pogi"\n` +
       `Security: MULTI-ADMIN LOCKED 🔒\n\n` +
-      `Gamitin ang /activate off para i-stop.`,
+      `/activate off para itigil.`,
       threadID,
       messageID
     );
   }
 
-  // Turn OFF
   if (sub === "off") {
     data.active = false;
     saveData(data);
     return api.sendMessage("✅ Naka-OFF na ang global auto-roast.", threadID, messageID);
   }
 
-  // Check Status
   if (sub === "status") {
     if (!data.active) {
       return api.sendMessage("Naka-OFF ang global auto-roast sa kasalukuyan.", threadID, messageID);
     }
     const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
     return api.sendMessage(
-      `🔥 Ang Tagalog Auto-roast ay ACTIVE (INFINITE ♾️)\n` +
-      `Mode: Reply to Message Enabled\n` +
-      `Anti-Spam: 2s Slow Motion Cooldown\n` +
-      `Auto GC Name: "Ryuk pogi"\n` +
-      `Admin Status: Verified Admin 🔒\n` +
-      `Kabuuan ng mga linya: ${totalLines}`,
+      `🔥 ACTIVE — ECLIPSE AUTO-ROAST\n` +
+      `Mode: Sequential + Keyword Triggers\n` +
+      `Timing: Human Delay + Typing Indicator\n` +
+      `Kabuuan ng mga linya: ${totalLines}\n` +
+      `Admin Status: Verified 🔒`,
       threadID,
       messageID
     );
   }
 
-  // Add Custom Tagalog Lines
   if (sub === "add") {
     const customLine = args.slice(1).join(" ");
     if (!customLine) {
-      return api.sendMessage("❌ Paki-lagay 'yung linyang gusto mong idagdag.\nHalimbawa: /activate add Tahimik ka na lang lods.", threadID, messageID);
+      return api.sendMessage("❌ Gamitin: /activate add <yung linya>", threadID, messageID);
     }
-
-    if (!data.roasts) data.roasts = DEFAULT_TAGALOG_ROASTS;
+    if (!data.roasts) data.roasts = [...DEFAULT_TAGALOG_ROASTS];
     data.roasts.push(customLine);
     saveData(data);
-
-    return api.sendMessage(`✅ Tagumpay na naidagdag ang bagong linya:\n"${customLine}"`, threadID, messageID);
+    return api.sendMessage(`✅ Naidagdag:\n"${customLine}"`, threadID, messageID);
   }
 
-  // List All Custom Lines
   if (sub === "listlines") {
     const list = data.roasts || DEFAULT_TAGALOG_ROASTS;
-    let msg = `📜 Lahat ng Tagalog Reply Lines (${list.length}):\n\n`;
-    list.forEach((line, index) => {
-      msg += `${index + 1}. ${line}\n`;
-    });
+    let msg = `📜 Reply Lines (${list.length}):\n\n`;
+    list.forEach((line, i) => msg += `${i + 1}. ${line}\n`);
     return api.sendMessage(msg, threadID, messageID);
   }
 
-  // Set All Members' Nicknames to "Ryuk pogi"
   if (sub === "setnick") {
     try {
       const threadInfo = await api.getThreadInfo(threadID);
       const participantIDs = threadInfo.participantIDs;
-
-      api.sendMessage(`⏳ Binabago ang nicknames ng lahat ng ${participantIDs.length} miyembro papuntang "Ryuk pogi"...`, threadID);
-
+      api.sendMessage(`⏳ Binabago ang nicknames ng ${participantIDs.length} miyembro...`, threadID);
       for (const userID of participantIDs) {
         await sleep(500);
         api.changeNickname("Ryuk pogi", threadID, userID, (err) => {
-          if (err) console.error(`Failed nickname change for ${userID}:`, err);
+          if (err) console.error(`Nickname change failed for ${userID}:`, err);
         });
       }
-      return api.sendMessage("✅ Tagumpay na nabago ang lahat ng nicknames papuntang 'Ryuk pogi'.", threadID, messageID);
-    } catch (e) {
-      return api.sendMessage("❌ Bigo sa pagbago ng nicknames. Siguraduhing admin ang bot.", threadID, messageID);
+      return api.sendMessage("✅ Done — lahat ng nicknames ay 'Ryuk pogi' na.", threadID, messageID);
+    } catch {
+      return api.sendMessage("❌ Bigo. Siguraduhing admin ang bot.", threadID, messageID);
     }
   }
 
-  // Manual Set Group Name to "Ryuk pogi"
   if (sub === "setgname") {
     api.setTitle("Ryuk pogi", threadID, (err) => {
-      if (err) {
-        return api.sendMessage("❌ Bigo sa pagbago ng pangalan ng group chat.", threadID, messageID);
-      }
-      return api.sendMessage("✅ Ang pangalan ng GC ay pinalitan na sa 'Ryuk pogi'.", threadID, messageID);
+      if (err) return api.sendMessage("❌ Hindi mabago ang pangalan ng GC.", threadID, messageID);
+      return api.sendMessage("✅ GC name: 'Ryuk pogi'", threadID, messageID);
     });
     return;
   }
 
   return api.sendMessage(
-    `Mga Paggamit (Admin Access Only):\n` +
-    `/activate on — Simulan ang infinite Tagalog auto-roast\n` +
-    `/activate off — Itigil ang auto-roast\n` +
-    `/activate status — Tignan ang status\n` +
-    `/activate add <text> — Magdagdag ng bagong Tagalog line\n` +
-    `/activate listlines — Ilista ang lahat ng linyang pang-asar\n` +
-    `/activate setnick — Gawing 'Ryuk pogi' ang lahat ng nicknames\n` +
-    `/activate setgname — Gawing 'Ryuk pogi' ang pangalan ng GC`,
+    `Mga Command:\n` +
+    `/activate on — Simulan\n` +
+    `/activate off — Itigil\n` +
+    `/activate status — Tingnan status\n` +
+    `/activate add <text> — Magdagdag ng linya\n` +
+    `/activate listlines — Ilista lahat\n` +
+    `/activate setnick — Gawing 'Ryuk pogi' ang lahat ng nick\n` +
+    `/activate setgname — Palitan GC name`,
     threadID,
     messageID
   );
 };
+  
