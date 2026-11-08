@@ -1,29 +1,24 @@
 const fs = require("fs");
 const path = require("path");
 
-// ===== IMPORT ALL ECLIPSE MODULES =====
-const { calculateHumanDelay } = require("../human-delay");
-const { humanize } = require("../human-mimic");
-const { withTyping } = require("../human-typing");
-const { rememberBanatReply, getUnusedReply, isReplyUsedRecently, clearThreadHistory } = require("../banat-memory");
-const { getBanatConversationReply } = require("../triggers");
-const { isDuplicateMessage } = require("../message-dedupe");
-const { shouldReplyToMessage, mentionsBot } = require("../banat-targeting");
-const { shuffleArray, pickWeighted, seededRandom, clamp } = require("../banat-randomizer");
-const { applyAbbreviations } = require("../banat-abbreviations");
-const { isGreeting, isFarewell, isThankYou } = require("../banat-social");
-const { isBotAdmin } = require("../admin-access");
+// ===== IMPORT ECLIPSE MODULES =====
+const { calculateHumanDelay } = require("./human-delay");
+const { humanize } = require("./human-mimic");
+const { withTyping } = require("./human-typing");
+const { rememberBanatReply, getUnusedReply } = require("./banat-memory");
+const { getBanatConversationReply } = require("./triggers");
+const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "11.0.0",
+  version: "11.0.0-safe",
   hasPermission: 0,
-  credits: "sinzu & Eclipse",
-  description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
+  credits: "sinzu & Eclipse · SAFE MODE",
+  description: "⚠️ CONSERVATIVE — Slower, less frequent, anti-detect",
   usePrefix: true,
-  commandCategory: "Fun",
-  usages: "/activate on | off | status | add <text> | listlines | setnick | clearhistory",
-  cooldowns: 5
+  commandCategory: "Admin",
+  usages: "/activate on | off | status | add | listlines | clearhistory",
+  cooldowns: 8
 };
 
 // 🔒 AUTHORIZED OWNER & ADMIN UIDS
@@ -32,44 +27,48 @@ const AUTHORIZED_UIDS = [
   "61595932841761"
 ];
 
-const DATA_PATH = path.join(__dirname, "..", "data", "activate_data.json");
+const DATA_PATH = path.join(__dirname, "activate_data.json");
 
-// Emojis for auto self-react
-const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎"];
+// 🛡️ SAFETY SETTINGS — CONSERVATIVE
+const SAFETY = {
+  MIN_COOLDOWN: 4000,        // ⏳ 4 seconds minimum between replies
+  REPLY_CHANCE: 0.65,        // 🎲 65% lang sasagot — 35% chance manahimik
+  TYPING_CHANCE: 0.85,       // ⌨️ 85% lang magpapakita ng typing indicator
+  SILENT_HOURS: true,        // 🌙 Auto-pause 1 AM – 5 AM
+  SILENT_START: 1,
+  SILENT_END: 5
+};
 
-// Default Tagalog roasts
+// Emojis for auto self-react — ONLY on own messages
+const REACT_EMOJIS = ["😏", "🗿", "💀", "😂", "🤷"];
+
+// Default Tagalog roasts — mas maikli, mas natural
 const DEFAULT_TAGALOG_ROASTS = [
-  "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
-  "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣",
-  "Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
-  "Sino nagtanong sa'yo? Lakas maka-main character ah.",
-  "Bro, isip muna bago pindot ng send button, napapahalata ka eh.",
-  "Pang-asar ba 'yan o self-humiliation? Clarify natin.",
-  "Sana bago ka nag-text, nag-isip ka muna ng limang beses.",
-  "Quiet ka na lang muna lods, nauubusan na kami ng patience sa'yo.",
-  "I-off mo na wifi mo, hindi para sa'yo ang araw na 'to.",
-  "Ganda ng sinabi mo ah, kasing ganda ng blankong papel. 🤡",
-  "Ulitin mo nga 'yan, para mas lalo ka naming pagtawanan.",
-  "May group chat restraint order ka na ba? Kasi lapit na kita i-report.",
-  "Tigilan mo na 'yan, pati 'yung keyboard mo sumusuko na sa'yo.",
-  "Confidence level: 100%. Sense level: 0%.",
-  "Sige lang, ipagpatuloy mo 'yan... hanggang sa wala nang makipag-usap sa'yo.",
-  "Mukhang naubusan na ng brain cells, pahinga ka muna.",
-  "Ang daldal mo pero wala namang laman. Classic.",
-  "Hindi lahat kailangan sagutin, lalo na ikaw.",
-  "Pwede bang mag-pause ka muna? Sayang lang data mo.",
-  "Ang hirap kausap, parang pader na nagsasalita."
+  "Bahala kayo diyan.",
+  "Gets naman.",
+  "Sige lang.",
+  "Okay lang 'yan.",
+  "Wala lang.",
+  "Hahaha.",
+  "Respeto lang naman ang hinihingi.",
+  "Huwag masyadong seryoso.",
+  "Kayo mag-usap, manonood lang ako.",
+  "Ingat palagi.",
+  "Hindi ko na masasagot 'yan.",
+  "Kanya-kanya naman tayo ng pananaw.",
+  "Sige na, tama na.",
+  "Mabuti pa magpahinga na lang kayo.",
+  "Huwag na mag-away.",
+  "Kung masaya kayo, go lang.",
+  "Wala akong pinipiling panig.",
+  "Respeto sa opinyon ng iba.",
+  "Okay, gets ko na ang punto mo.",
+  "Ikaw lang nakakaramdam nun."
 ];
 
 // ===== DATA MANAGEMENT =====
-function ensureDataDir() {
-  const dataDir = path.dirname(DATA_PATH);
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-}
-
 function loadData() {
   try {
-    ensureDataDir();
     if (fs.existsSync(DATA_PATH)) {
       const parsed = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
       if (!parsed.roasts || parsed.roasts.length === 0) {
@@ -82,7 +81,6 @@ function loadData() {
 }
 
 function saveData(data) {
-  ensureDataDir();
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
 
@@ -91,10 +89,11 @@ function isActive() {
   return data.active === true;
 }
 
-// ===== ANTI-SPAM SYSTEM =====
-const lastResponseTime = new Map();
-const recentMessageCount = new Map();
-const COOLDOWN_DELAY = 1800;
+function isSilentHours() {
+  if (!SAFETY.SILENT_HOURS) return false;
+  const hour = new Date().getHours();
+  return hour >= SAFETY.SILENT_START || hour < SAFETY.SILENT_END;
+}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -110,30 +109,33 @@ function getSequentialReply(threadID, replies) {
   return line;
 }
 
+// ===== ANTI-SPAM =====
+const lastResponseTime = new Map();
+const recentMessageCount = new Map();
+
 // ===== EVENT HANDLER =====
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
   const botID = api.getCurrentUserID();
 
   if (!isActive()) return;
-
-  // Skip duplicate messages
+  if (!body || senderID === botID) return;
+  if (body.toLowerCase().startsWith("/activate")) return;
   if (isDuplicateMessage(messageID)) return;
 
-  // Use targeting helper to decide if we should reply
-  if (!shouldReplyToMessage(body, senderID, botID)) return;
-
-  // Ignore own messages & command
-  if (body.toLowerCase().startsWith("/activate")) return;
+  // 🌙 Auto-pause during silent hours
+  if (isSilentHours()) return;
 
   const now = Date.now();
   const lastTime = lastResponseTime.get(threadID) || 0;
 
-  // Anti-spam check
-  if (now - lastTime < COOLDOWN_DELAY) return;
-  lastResponseTime.set(threadID, now);
+  // Anti-spam cooldown
+  if (now - lastTime < SAFETY.MIN_COOLDOWN) return;
 
-  // Track recent messages for timing context
+  // 🎲 Random chance to stay silent — mas natural
+  if (Math.random() > SAFETY.REPLY_CHANCE) return;
+
+  lastResponseTime.set(threadID, now);
   const recent = recentMessageCount.get(threadID) || 0;
   recentMessageCount.set(threadID, Math.min(10, recent + 1));
   setTimeout(() => recentMessageCount.set(threadID, Math.max(0, recentMessageCount.get(threadID) - 1)), 30000);
@@ -142,57 +144,56 @@ module.exports.handleEvent = async function ({ api, event }) {
     const data = loadData();
     const roastsList = data.roasts || DEFAULT_TAGALOG_ROASTS;
 
-    // Step 1: Check social patterns first
-    let replyText = null;
-    if (isGreeting(body)) replyText = "Oo, nandito ako. Anong kailangan mo? 😏";
-    else if (isThankYou(body)) replyText = "Walang anuman. 😌";
-    else if (isFarewell(body)) replyText = "Sige, ingat. 👋";
+    // Step 1: Check triggers first
+    let replyText = getBanatConversationReply(body, threadID);
     
-    // Step 2: Check keyword triggers
-    if (!replyText) replyText = getBanatConversationReply(body, threadID);
-    
-    // Step 3: Fallback to sequential roasts — avoid repeats
+    // Step 2: Sequential + avoid repeats
     if (!replyText) {
       const candidate = getSequentialReply(threadID, roastsList);
       replyText = getUnusedReply(threadID, [candidate, ...roastsList.filter(r => r !== candidate)]);
       rememberBanatReply(threadID, replyText);
     }
 
-    // Step 4: Humanize the text
+    // Step 3: Humanize
     replyText = humanize(replyText, {
       abbreviate: false,
       typos: false,
       punctuation: true
     });
 
-    // Optional: Apply abbreviations for more natural chat
-    // replyText = applyAbbreviations(replyText, 0.2);
-
-    // Step 5: Calculate natural delay
+    // Step 4: Natural delay
     const delayResult = calculateHumanDelay(replyText, {
       incomingText: body,
       recentMessages: recent,
-      mode: "normal"
+      mode: "slow" // ⬅️ Mas mabagal = mas ligtas
     });
 
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
+    const showTyping = Math.random() < SAFETY.TYPING_CHANCE;
 
-    // Step 6: Send with typing indicator + natural delay
-    await withTyping(api, threadID, delayResult.totalMs, async () => {
+    // Step 5: Send — minsan walang typing indicator para hindi predictable
+    if (showTyping) {
+      await withTyping(api, threadID, delayResult.totalMs, async () => {
+        sendReply();
+      });
+    } else {
+      await sleep(delayResult.totalMs);
+      sendReply();
+    }
+
+    function sendReply() {
       api.sendMessage({
         body: replyText,
         mentions: [{ tag: `@${senderID}`, id: senderID }]
       }, threadID, async (err, info) => {
-        if (!err && info && info.messageID) {
-          await sleep(400 + Math.floor(Math.random() * 400));
-          api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
-            if (reactErr) console.error("Self-react error:", reactErr);
-          }, true);
+        if (!err && info?.messageID) {
+          await sleep(600 + Math.floor(Math.random() * 600));
+          api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {}, true);
         }
       }, messageID);
-    });
+    }
   } catch (error) {
-    console.error("Auto-reply error:", error);
+    console.error("⚠️ Reply skipped:", error.message);
   }
 };
 
@@ -200,9 +201,8 @@ module.exports.handleEvent = async function ({ api, event }) {
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
 
-  // 🔒 ADMIN LOCK
-  if (!isBotAdmin(senderID, AUTHORIZED_UIDS)) {
-    return api.sendMessage("❌ Restricted: Ikaw ay hindi awtorisadong admin. Ang mga nakarehistrong Bot Owners lang ang pwedeng mag-control ng bot.", threadID, messageID);
+  if (!AUTHORIZED_UIDS.includes(senderID)) {
+    return api.sendMessage("❌ Restricted — Admin only.", threadID, messageID);
   }
 
   const sub = (args[0] || "").toLowerCase();
@@ -214,13 +214,11 @@ module.exports.run = async function ({ api, event, args }) {
     data.activatedAt = Date.now();
     saveData(data);
     return api.sendMessage(
-      `🔥 TAGALOG GLOBAL AUTO-ROAST: ON\n\n` +
-      `Mode: Sequential + Triggers + Social ✅\n` +
-      `Timing: Human Delay + Typing Indicator\n` +
-      `Anti-Spam: 1.8s cooldown\n` +
-      `Anti-Duplicate: ENABLED ✅\n` +
-      `Memory: Avoids repeat replies ✅\n` +
-      `Security: MULTI-ADMIN LOCKED 🔒\n\n` +
+      `✅ BOT ACTIVATED — SAFE MODE\n\n` +
+      `⏱ Min delay: ${SAFETY.MIN_COOLDOWN/1000}s+\n` +
+      `🎲 Reply chance: ${Math.round(SAFETY.REPLY_CHANCE*100)}%\n` +
+      `🌙 Silent hours: ${SAFETY.SILENT_START}:00–${SAFETY.SILENT_END}:00\n` +
+      `⚠️ Use responsibly — no script is 100% undetectable\n\n` +
       `/activate off para itigil.`,
       threadID,
       messageID
@@ -230,22 +228,17 @@ module.exports.run = async function ({ api, event, args }) {
   if (sub === "off") {
     data.active = false;
     saveData(data);
-    return api.sendMessage("✅ Naka-OFF na ang global auto-roast.", threadID, messageID);
+    return api.sendMessage("⏳ Bot deactivated.", threadID, messageID);
   }
 
   if (sub === "status") {
-    if (!data.active) {
-      return api.sendMessage("Naka-OFF ang global auto-roast sa kasalukuyan.", threadID, messageID);
-    }
+    const active = isActive();
     const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
     return api.sendMessage(
-      `🔥 ACTIVE — ECLIPSE AUTO-ROAST\n` +
-      `Mode: Sequential + Triggers + Social\n` +
-      `Timing: Human Delay + Typing Indicator\n` +
-      `Anti-Dupe + Anti-Spam: ENABLED ✅\n` +
-      `Memory System: ENABLED ✅\n` +
-      `Kabuuan ng mga linya: ${totalLines}\n` +
-      `Admin Status: Verified 🔒`,
+      `${active ? "✅ ONLINE" : "⏳ OFFLINE"} — Safe Mode\n\n` +
+      `Reply lines: ${totalLines}\n` +
+      `Silent hours: ${SAFETY.SILENT_HOURS ? "ON" : "OFF"}\n` +
+      `Admin: Verified 🔒`,
       threadID,
       messageID
     );
@@ -253,9 +246,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (sub === "add") {
     const customLine = args.slice(1).join(" ");
-    if (!customLine) {
-      return api.sendMessage("❌ Gamitin: /activate add <yung linya>", threadID, messageID);
-    }
+    if (!customLine) return api.sendMessage("❌ Gamitin: /activate add <text>", threadID, messageID);
     if (!data.roasts) data.roasts = [...DEFAULT_TAGALOG_ROASTS];
     data.roasts.push(customLine);
     saveData(data);
@@ -270,39 +261,20 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   if (sub === "clearhistory") {
-    clearThreadHistory(threadID);
     threadSequence.delete(threadID);
-    return api.sendMessage("✅ Kasaysayan ng mga reply na-clear na.", threadID, messageID);
-  }
-
-  if (sub === "setnick") {
-    try {
-      const threadInfo = await api.getThreadInfo(threadID);
-      const participantIDs = threadInfo.participantIDs;
-      api.sendMessage(`⏳ Binabago ang nicknames ng ${participantIDs.length} miyembro...`, threadID);
-      for (const userID of participantIDs) {
-        await sleep(500);
-        api.changeNickname("Ryuk pogi", threadID, userID, (err) => {
-          if (err) console.error(`Nickname change failed for ${userID}:`, err);
-        });
-      }
-      return api.sendMessage("✅ Done — lahat ng nicknames ay 'Ryuk pogi' na.", threadID, messageID);
-    } catch {
-      return api.sendMessage("❌ Bigo. Siguraduhing admin ang bot.", threadID, messageID);
-    }
+    return api.sendMessage("✅ Reply sequence reset na.", threadID, messageID);
   }
 
   return api.sendMessage(
-    `Mga Command:\n` +
+    `Commands:\n` +
     `/activate on — Simulan\n` +
     `/activate off — Itigil\n` +
     `/activate status — Tingnan status\n` +
     `/activate add <text> — Magdagdag ng linya\n` +
     `/activate listlines — Ilista lahat\n` +
-    `/activate clearhistory — I-reset ang reply sequence\n` +
-    `/activate setnick — Gawing 'Ryuk pogi' ang lahat ng nick`,
+    `/activate clearhistory — I-reset ang sequence`,
     threadID,
     messageID
   );
 };
-  
+      
