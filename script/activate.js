@@ -5,15 +5,16 @@ const path = require("path");
 const { calculateHumanDelay } = require("./human-delay");
 const { humanize } = require("./human-mimic");
 const { withTyping } = require("./human-typing");
-const { pickBanatReply, rememberBanatReply } = require("./banat-memory");
+const { rememberBanatReply, getUnusedReply } = require("./banat-memory");
 const { getBanatConversationReply } = require("./triggers");
+const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.0.0",
+  version: "10.1.0",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
-  description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Multi-Admin Lock",
+  description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/activate on | off | status | add <text> | listlines | setnick | setgname",
@@ -103,6 +104,9 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!isActive()) return;
 
+  // Skip duplicate messages
+  if (isDuplicateMessage(messageID)) return;
+
   // AUTO ENFORCE GC NAME
   if (logMessageType === "log:thread-name" || logMessageType === "log:subscribe" || logMessageType === "log:unsubscribe") {
     if (logMessageData && logMessageData.name !== "Ryuk pogi") {
@@ -135,9 +139,10 @@ module.exports.handleEvent = async function ({ api, event }) {
     // Step 1: Check triggers first
     let replyText = getBanatConversationReply(body, threadID);
     
-    // Step 2: Fallback to sequential roasts
+    // Step 2: Fallback to sequential roasts — avoid repeats
     if (!replyText) {
-      replyText = getSequentialReply(threadID, roastsList);
+      const candidate = getSequentialReply(threadID, roastsList);
+      replyText = getUnusedReply(threadID, [candidate, ...roastsList.filter(r => r !== candidate)]);
       rememberBanatReply(threadID, replyText);
     }
 
@@ -197,9 +202,9 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage(
       `🔥 TAGALOG GLOBAL AUTO-ROAST: ON\n\n` +
       `Mode: Sequential + Trigger replies ✅\n` +
-      `Timing: Human Delay (natural typing speed)\n` +
-      `Typing Indicator: ENABLED ✅\n` +
+      `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Spam: 1.8s cooldown\n` +
+      `Anti-Duplicate: ENABLED ✅\n` +
       `Auto GC Name: "Ryuk pogi"\n` +
       `Security: MULTI-ADMIN LOCKED 🔒\n\n` +
       `/activate off para itigil.`,
@@ -223,6 +228,7 @@ module.exports.run = async function ({ api, event, args }) {
       `🔥 ACTIVE — ECLIPSE AUTO-ROAST\n` +
       `Mode: Sequential + Keyword Triggers\n` +
       `Timing: Human Delay + Typing Indicator\n` +
+      `Anti-Dupe + Anti-Spam: ENABLED ✅\n` +
       `Kabuuan ng mga linya: ${totalLines}\n` +
       `Admin Status: Verified 🔒`,
       threadID,
@@ -286,4 +292,3 @@ module.exports.run = async function ({ api, event, args }) {
     messageID
   );
 };
-  
