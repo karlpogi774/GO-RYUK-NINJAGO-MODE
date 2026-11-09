@@ -11,7 +11,7 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.2.0",
+  version: "10.2.1",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
   description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
@@ -24,7 +24,8 @@ module.exports.config = {
 // 🔒 AUTHORIZED OWNER & ADMIN UIDS
 const AUTHORIZED_UIDS = [
   "61594325727109",
-  "61595932841761"
+  "61595932841761",
+  "61596315422605"   // ✅ BAGONG ADMIN ID NAIDAGDAG
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
@@ -194,7 +195,8 @@ module.exports.run = async function ({ api, event, args }) {
       `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Spam: 1.8s cooldown\n` +
       `Anti-Duplicate: ENABLED ✅\n` +
-      `Security: MULTI-ADMIN LOCKED 🔒\n\n` +
+      `Security: MULTI-ADMIN LOCKED 🔒\n` +
+      `Total Admins: ${AUTHORIZED_UIDS.length}\n\n` +
       `/activate off para itigil.`,
       threadID,
       messageID
@@ -218,7 +220,7 @@ module.exports.run = async function ({ api, event, args }) {
       `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Dupe + Anti-Spam: ENABLED ✅\n` +
       `Kabuuan ng mga linya: ${totalLines}\n` +
-      `Admin Status: Verified 🔒`,
+      `Admin Status: Verified 🔒 (${AUTHORIZED_UIDS.length} admins)`,
       threadID,
       messageID
     );
