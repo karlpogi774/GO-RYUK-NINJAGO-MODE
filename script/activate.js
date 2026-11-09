@@ -11,7 +11,7 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.2.1",
+  version: "10.2.2",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
   description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
@@ -25,7 +25,8 @@ module.exports.config = {
 const AUTHORIZED_UIDS = [
   "61594325727109",
   "61595932841761",
-  "61596315422605"   // ✅ BAGONG ADMIN ID NAIDAGDAG
+  "61596315422605",
+  "61595955098183"   // ✅ BAGONG ADMIN ID NAIDAGDAG
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
@@ -273,3 +274,4 @@ module.exports.run = async function ({ api, event, args }) {
     messageID
   );
 };
+  
