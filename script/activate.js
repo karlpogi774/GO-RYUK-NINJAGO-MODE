@@ -11,7 +11,7 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.3.1",
+  version: "10.3.2",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
   description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
@@ -24,7 +24,8 @@ module.exports.config = {
 // 🔒 AUTHORIZED ADMIN UIDS
 const AUTHORIZED_UIDS = [
   "61596315422605",
-  "61595955098183"   // ✅ NAIDAGDAG
+  "61595955098183",
+  "61596600291238"   // ✅ NAIDAGDAG
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
