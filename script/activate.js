@@ -11,22 +11,19 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.2.2",
+  version: "10.3.0",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
-  description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
+  description: "Tagalog Auto-Roast · Sequential/Human Delay · Anti-Spam · Anti-Dupe · Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/activate on | off | status | add <text> | listlines | setnick",
   cooldowns: 5
 };
 
-// 🔒 AUTHORIZED OWNER & ADMIN UIDS
+// 🔒 AUTHORIZED ADMIN — ONLY ONE
 const AUTHORIZED_UIDS = [
-  "61594325727109",
-  "61595932841761",
-  "61596315422605",
-  "61595955098183"   // ✅ BAGONG ADMIN ID NAIDAGDAG
+  "61596315422605"   // ✅ ITO LANG
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
@@ -179,7 +176,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   // 🔒 ADMIN LOCK
   if (!AUTHORIZED_UIDS.includes(senderID)) {
-    return api.sendMessage("❌ Restricted: Ikaw ay hindi awtorisadong admin. Ang mga nakarehistrong Bot Owners lang ang pwedeng mag-control ng bot.", threadID, messageID);
+    return api.sendMessage("❌ Restricted: Ikaw ay hindi awtorisadong admin.", threadID, messageID);
   }
 
   const sub = (args[0] || "").toLowerCase();
@@ -196,8 +193,7 @@ module.exports.run = async function ({ api, event, args }) {
       `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Spam: 1.8s cooldown\n` +
       `Anti-Duplicate: ENABLED ✅\n` +
-      `Security: MULTI-ADMIN LOCKED 🔒\n` +
-      `Total Admins: ${AUTHORIZED_UIDS.length}\n\n` +
+      `Security: ADMIN LOCKED 🔒\n\n` +
       `/activate off para itigil.`,
       threadID,
       messageID
@@ -221,7 +217,7 @@ module.exports.run = async function ({ api, event, args }) {
       `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Dupe + Anti-Spam: ENABLED ✅\n` +
       `Kabuuan ng mga linya: ${totalLines}\n` +
-      `Admin Status: Verified 🔒 (${AUTHORIZED_UIDS.length} admins)`,
+      `Admin Status: Verified 🔒`,
       threadID,
       messageID
     );
@@ -274,4 +270,3 @@ module.exports.run = async function ({ api, event, args }) {
     messageID
   );
 };
-  
