@@ -25,7 +25,7 @@ module.exports.config = {
 const AUTHORIZED_UIDS = [
   "61596315422605",
   "61595955098183",
-  "61596600291238"
+  "61596600291238"   // ✅ NAIDAGDAG
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
@@ -144,23 +144,29 @@ module.exports.handleEvent = async function ({ api, event }) {
       punctuation: true
     });
 
+    // Step 4: Calculate natural delay
+    const delayResult = calculateHumanDelay(replyText, {
+      incomingText: body,
+      recentMessages: recent,
+      mode: "normal"
+    });
+
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    // ⏳ FIXED 20s DELAY — TANGGAL calculateHumanDelay at withTyping
-    api.sendTypingIndicator(threadID);
-    await sleep(20000);
-
-    api.sendMessage({
-      body: replyText,
-      mentions: [{ tag: `@${senderID}`, id: senderID }]
-    }, threadID, async (err, info) => {
-      if (!err && info && info.messageID) {
-        await sleep(400 + Math.floor(Math.random() * 400));
-        api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
-          if (reactErr) console.error("Self-react error:", reactErr);
-        }, true);
-      }
-    }, messageID);
+    // Step 5: Send with typing indicator + natural delay
+    await withTyping(api, threadID, delayResult.totalMs, async () => {
+      api.sendMessage({
+        body: replyText,
+        mentions: [{ tag: `@${senderID}`, id: senderID }]
+      }, threadID, async (err, info) => {
+        if (!err && info && info.messageID) {
+          await sleep(400 + Math.floor(Math.random() * 400));
+          api.setMessageReaction(randomEmoji, info.messageID, (reactErr) => {
+            if (reactErr) console.error("Self-react error:", reactErr);
+          }, true);
+        }
+      }, messageID);
+    });
   } catch (error) {
     console.error("Auto-reply error:", error);
   }
@@ -185,8 +191,8 @@ module.exports.run = async function ({ api, event, args }) {
     saveData(data);
     return api.sendMessage(
       `🔥 TAGALOG GLOBAL AUTO-ROAST: ON\n\n` +
-      `⏳ Reply Delay: 20 segundo (Fixed)\n` +
       `Mode: Sequential + Trigger replies ✅\n` +
+      `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Spam: 1.8s cooldown\n` +
       `Anti-Duplicate: ENABLED ✅\n` +
       `Security: MULTI-ADMIN LOCKED 🔒\n` +
@@ -210,8 +216,8 @@ module.exports.run = async function ({ api, event, args }) {
     const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
     return api.sendMessage(
       `🔥 ACTIVE — ECLIPSE AUTO-ROAST\n` +
-      `⏳ Reply Delay: 20 segundo (Fixed)\n` +
       `Mode: Sequential + Keyword Triggers\n` +
+      `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Dupe + Anti-Spam: ENABLED ✅\n` +
       `Kabuuan ng mga linya: ${totalLines}\n` +
       `Admin Status: Verified 🔒 (${AUTHORIZED_UIDS.length} admins)`,
@@ -267,4 +273,3 @@ module.exports.run = async function ({ api, event, args }) {
     messageID
   );
 };
-  
