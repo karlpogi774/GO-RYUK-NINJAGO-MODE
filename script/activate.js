@@ -10,14 +10,14 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.3.4",
+  version: "10.3.5",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
-  description: "Tagalog Auto-Roast · Bago Lang ang Sasagutin · Multi-Admin Lock",
+  description: "Tagalog Auto-Roast · Bago Lang · 6s Delay · Multi-Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/activate on | off | status | add <text> | listlines | setnick",
-  cooldowns: 5
+  cooldowns: 6
 };
 
 const AUTHORIZED_UIDS = [
@@ -28,6 +28,7 @@ const AUTHORIZED_UIDS = [
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎"];
+const REPLY_DELAY = 6000; // ⏳ 6 segundo
 
 const DEFAULT_TAGALOG_ROASTS = [
   "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
@@ -74,8 +75,8 @@ function isActive() {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const lastResponseTime = new Map();
 const recentMessageCount = new Map();
-const lastProcessedTime = new Map(); // Track last processed time per GC
-const COOLDOWN_DELAY = 1800;
+const lastProcessedTime = new Map();
+const COOLDOWN_DELAY = 6000; // ⏳ 6 segundo cooldown
 
 const threadSequence = new Map();
 function getSequentialReply(threadID, replies) {
@@ -98,11 +99,11 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (body.toLowerCase().startsWith("/activate")) return;
   if (isDuplicateMessage(messageID)) return;
 
-  // ✅ BAGO LANG — hindi sasagot kung mas luma pa sa huling na-process
+  // ✅ Bago lang ang sasagutin
   const msgTime = timestamp || now;
   const lastTime = lastProcessedTime.get(threadID) || 0;
-  if (msgTime < lastTime) return; // ❌ Luma na — skip
-  lastProcessedTime.set(threadID, now); // ✅ Ito ang bagong reference
+  if (msgTime < lastTime) return;
+  lastProcessedTime.set(threadID, msgTime);
 
   if (now - (lastResponseTime.get(threadID) || 0) < COOLDOWN_DELAY) return;
   lastResponseTime.set(threadID, now);
@@ -123,20 +124,21 @@ module.exports.handleEvent = async function ({ api, event }) {
     }
 
     replyText = humanize(replyText, { abbreviate: false, typos: false, punctuation: true });
-    const delayResult = calculateHumanDelay(replyText, { incomingText: body, recentMessages: recent, mode: "normal" });
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    await withTyping(api, threadID, delayResult.totalMs, async () => {
-      api.sendMessage({
-        body: replyText,
-        mentions: [{ tag: `@${senderID}`, id: senderID }]
-      }, threadID, async (err, info) => {
-        if (!err && info?.messageID) {
-          await sleep(400 + Math.floor(Math.random() * 400));
-          api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
-        }
-      }, messageID);
-    });
+    // ⏳ 6 segundo bago mag-send
+    await api.sendTypingIndicator(threadID);
+    await sleep(REPLY_DELAY);
+
+    api.sendMessage({
+      body: replyText,
+      mentions: [{ tag: `@${senderID}`, id: senderID }]
+    }, threadID, async (err, info) => {
+      if (!err && info?.messageID) {
+        await sleep(400 + Math.floor(Math.random() * 400));
+        api.setMessageReaction(randomEmoji, info.messageID, () => {}, true);
+      }
+    }, messageID);
   } catch (error) {
     console.error("Error:", error);
   }
@@ -153,7 +155,7 @@ module.exports.run = async function ({ api, event, args }) {
     data.active = true;
     data.activatedBy = senderID;
     saveData(data);
-    return api.sendMessage("✅ Bot ON — Bago lang ang sasagutin, hindi hahabol sa luma.", threadID, messageID);
+    return api.sendMessage("✅ Bot ON — 6 segundo delay bago mag-reply.\nPinakabagong mensahe lang ang sasagutin.", threadID, messageID);
   }
   if (sub === "off") {
     data.active = false;
@@ -162,7 +164,7 @@ module.exports.run = async function ({ api, event, args }) {
   }
   if (sub === "status") {
     const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
-    return api.sendMessage(`Status: ${isActive() ? "✅ ON" : "⏳ OFF"}\nReply lines: ${totalLines}\nMode: Bago lang ang sasagutin ✅`, threadID, messageID);
+    return api.sendMessage(`Status: ${isActive() ? "✅ ON" : "⏳ OFF"}\nReply delay: 6 segundo ⏳\nReply lines: ${totalLines}\nMode: Bago lang ang sasagutin ✅`, threadID, messageID);
   }
   if (sub === "add") {
     const customLine = args.slice(1).join(" ");
@@ -204,4 +206,3 @@ module.exports.run = async function ({ api, event, args }) {
     messageID
   );
 };
-  
