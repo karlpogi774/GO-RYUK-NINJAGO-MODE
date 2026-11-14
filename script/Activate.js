@@ -31,7 +31,7 @@ const AUTHORIZED_UIDS = [
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
 // Emojis for auto self-react
-const REACT_EMOJIS = ["🔥", "💀", "🤣", "😆", "🤡", "👎"];
+const REACT_EMOJIS = [];
 
 // Default Tagalog roasts
 const DEFAULT_TAGALOG_ROASTS = [
