@@ -11,13 +11,13 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.4.0",
+  version: "10.5.0",
   hasPermission: 2,
   credits: "sinzu & Eclipse",
-  description: "Tagalog Auto-Roast · Spam Mode · GC Name Changer · Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
+  description: "Tagalog Auto-Roast · Auto GC Name Changer · Spam Mode · Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/activate on | off | status | add | listlines | setnick | spam <msg> | spamstop | setgcname <pangalan>",
+  usages: "/activate on | off | status | add | listlines | setnick | startauto | stopauto",
   cooldowns: 5
 };
 
@@ -26,7 +26,7 @@ const AUTHORIZED_UIDS = [
   "61596315422605",
   "61595955098183",
   "61596600291238",
-  "61596182742640"   // ✅ BAGONG ADMIN
+  "61596182742640"
 ];
 
 const DATA_PATH = path.join(__dirname, "activate_data.json");
@@ -34,10 +34,34 @@ const DATA_PATH = path.join(__dirname, "activate_data.json");
 // Emojis for auto self-react
 const REACT_EMOJIS = [];
 
-// ===== SPAM MODE CONFIG =====
-const SPAM_DELAY_MS = 9000; // ⏱️ 9 seconds
+// ⏱️ DELAY SETTING
+const AUTO_DELAY_MS = 9000; // 9 seconds
 
-// Iba-ibang mensahe — hindi paulit-ulit
+// 📢 AUTO GROUP CHAT NAMES — parang kinakausap ang sarili!
+const AUTO_GC_NAMES = [
+  "😏 Nandito lang ako...",
+  "Hoy! Gising na kayo!",
+  "Bakit ang tahimik niyo?",
+  "Ako lang ba ang buhay dito?",
+  "Hello? May tao ba diyan?",
+  "Sige na magsalita naman kayo",
+  "Pag ako lang magsasalita...",
+  "Wala bang may sasabihin?",
+  "Edi ako na lang magsasalita 😎",
+  "Ang boring naman dito eh",
+  "Kausapin niyo naman ako 😭",
+  "Pag hindi kayo magsalita...",
+  "Ako magpapasaya sa inyo 😌",
+  "Bakit walang nagre-reply?",
+  "Okay lang ako naman masaya mag-isa 😤",
+  "May kausap ba ako dito?",
+  "Tao po! Nandito pa ba kayo?",
+  "Sige, dededmahin niyo ako 😤",
+  "Kung ayaw niyo magsalita...",
+  "Ako naman magsasalita para sa inyo ✌️"
+];
+
+// 💬 SPAM MESSAGES — iba-iba, hindi paulit-ulit
 const SPAM_MESSAGES = [
   "Mga tol, gising na kayo diyan! 😂",
   "Ang tahimik naman dito, may buhay pa ba kayo?",
@@ -56,9 +80,10 @@ const SPAM_MESSAGES = [
   "Ako lang ba ang buhay dito? Hello? 🙋"
 ];
 
-let spamActive = new Map();
-let spamIndex = new Map();
-let spamTimer = new Map();
+let autoModeActive = new Map();
+let nameIndex = new Map();
+let msgIndex = new Map();
+let autoTimer = new Map();
 
 // Default Tagalog roasts
 const DEFAULT_TAGALOG_ROASTS = [
@@ -126,48 +151,68 @@ function getSequentialReply(threadID, replies) {
   return line;
 }
 
-// ===== SPAM MODE =====
-function getSpamMessage(threadID, customMsg = null) {
-  if (customMsg) return customMsg;
-  if (!spamIndex.has(threadID)) spamIndex.set(threadID, 0);
-  let idx = spamIndex.get(threadID);
+// ===== AUTO MODE — CHANGE GC NAME + SEND MESSAGE ALTERNATING =====
+function getNextGcName(threadID) {
+  if (!nameIndex.has(threadID)) nameIndex.set(threadID, 0);
+  let idx = nameIndex.get(threadID);
+  const name = AUTO_GC_NAMES[idx];
+  idx = (idx + 1) % AUTO_GC_NAMES.length;
+  nameIndex.set(threadID, idx);
+  return name;
+}
+
+function getNextSpamMessage(threadID) {
+  if (!msgIndex.has(threadID)) msgIndex.set(threadID, 0);
+  let idx = msgIndex.get(threadID);
   const msg = SPAM_MESSAGES[idx];
   idx = (idx + 1) % SPAM_MESSAGES.length;
-  spamIndex.set(threadID, idx);
+  msgIndex.set(threadID, idx);
   return msg;
 }
 
-async function startSpam(api, threadID, customMsg = null) {
-  if (spamActive.get(threadID)) return false;
-  spamActive.set(threadID, true);
-  
-  const sendNext = async () => {
-    if (!spamActive.get(threadID)) return;
+async function startAutoMode(api, threadID) {
+  if (autoModeActive.get(threadID)) return false;
+  autoModeActive.set(threadID, true);
+
+  let turn = 0; // 0 = change name, 1 = send message
+
+  const autoLoop = async () => {
+    if (!autoModeActive.get(threadID)) return;
     try {
-      const msg = getSpamMessage(threadID, customMsg);
-      api.sendMessage(msg, threadID, () => {
-        if (spamActive.get(threadID)) {
-          spamTimer.set(threadID, setTimeout(sendNext, SPAM_DELAY_MS));
-        }
-      });
-    } catch (e) {
-      console.error("[SPAM] Send error:", e);
-      if (spamActive.get(threadID)) {
-        spamTimer.set(threadID, setTimeout(sendNext, SPAM_DELAY_MS));
+      if (turn === 0) {
+        // 🔁 CHANGE GC NAME — parang nagsasalita yung pangalan mismo
+        const newName = getNextGcName(threadID);
+        api.setTitle(newName, threadID, (err) => {
+          if (err) console.error("[AUTO-NAME] Error:", err?.message || err);
+        });
+      } else {
+        // 💬 SEND MESSAGE — parang sumagot siya sa sarili
+        const msg = getNextSpamMessage(threadID);
+        api.sendMessage(msg, threadID, (err) => {
+          if (err) console.error("[AUTO-MSG] Error:", err?.message || err);
+        });
       }
+      turn = 1 - turn; // Palitan: name → message → name → message...
+    } catch (e) {
+      console.error("[AUTO-MODE] Error:", e);
+      turn = 1 - turn;
+    }
+    if (autoModeActive.get(threadID)) {
+      autoTimer.set(threadID, setTimeout(autoLoop, AUTO_DELAY_MS));
     }
   };
-  sendNext();
+  autoLoop();
   return true;
 }
 
-function stopSpam(threadID) {
-  spamActive.set(threadID, false);
-  if (spamTimer.has(threadID)) {
-    clearTimeout(spamTimer.get(threadID));
-    spamTimer.delete(threadID);
+function stopAutoMode(threadID) {
+  autoModeActive.set(threadID, false);
+  if (autoTimer.has(threadID)) {
+    clearTimeout(autoTimer.get(threadID));
+    autoTimer.delete(threadID);
   }
-  spamIndex.delete(threadID);
+  nameIndex.delete(threadID);
+  msgIndex.delete(threadID);
   return true;
 }
 
@@ -176,21 +221,14 @@ module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, body, messageID } = event;
 
   if (!isActive()) return;
-
-  // Skip duplicate messages
   if (isDuplicateMessage(messageID)) return;
-
-  // Ignore own messages & command
   if (!body || senderID === api.getCurrentUserID() || body.toLowerCase().startsWith("/activate")) return;
 
   const now = Date.now();
   const lastTime = lastResponseTime.get(threadID) || 0;
-
-  // Anti-spam check
   if (now - lastTime < COOLDOWN_DELAY) return;
   lastResponseTime.set(threadID, now);
 
-  // Track recent messages for timing context
   const recent = recentMessageCount.get(threadID) || 0;
   recentMessageCount.set(threadID, Math.min(10, recent + 1));
   setTimeout(() => recentMessageCount.set(threadID, Math.max(0, recentMessageCount.get(threadID) - 1)), 30000);
@@ -199,33 +237,18 @@ module.exports.handleEvent = async function ({ api, event }) {
     const data = loadData();
     const roastsList = data.roasts || DEFAULT_TAGALOG_ROASTS;
 
-    // Step 1: Check triggers first
     let replyText = getBanatConversationReply(body, threadID);
-    
-    // Step 2: Fallback to sequential roasts — avoid repeats
     if (!replyText) {
       const candidate = getSequentialReply(threadID, roastsList);
       replyText = getUnusedReply(threadID, [candidate, ...roastsList.filter(r => r !== candidate)]);
       rememberBanatReply(threadID, replyText);
     }
 
-    // Step 3: Humanize the text
-    replyText = humanize(replyText, {
-      abbreviate: false,
-      typos: false,
-      punctuation: true
-    });
-
-    // Step 4: Calculate natural delay
-    const delayResult = calculateHumanDelay(replyText, {
-      incomingText: body,
-      recentMessages: recent,
-      mode: "normal"
-    });
+    replyText = humanize(replyText, { abbreviate: false, typos: false, punctuation: true });
+    const delayResult = calculateHumanDelay(replyText, { incomingText: body, recentMessages: recent, mode: "normal" });
 
     const randomEmoji = REACT_EMOJIS[Math.floor(Math.random() * REACT_EMOJIS.length)];
 
-    // Step 5: Send with typing indicator + natural delay
     await withTyping(api, threadID, delayResult.totalMs, async () => {
       api.sendMessage({
         body: replyText,
@@ -248,7 +271,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
 
-  // 🔒 ADMIN LOCK
   if (!AUTHORIZED_UIDS.includes(senderID)) {
     return api.sendMessage("❌ Restricted: Ikaw ay hindi awtorisadong admin.", threadID, messageID);
   }
@@ -286,13 +308,13 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("Naka-OFF ang global auto-roast sa kasalukuyan.", threadID, messageID);
     }
     const totalLines = (data.roasts || DEFAULT_TAGALOG_ROASTS).length;
-    const spamRunning = spamActive.get(threadID) ? "🟢 RUNNING" : "🔴 STOPPED";
+    const autoRunning = autoModeActive.get(threadID) ? "🟢 RUNNING" : "🔴 STOPPED";
     return api.sendMessage(
       `🔥 ACTIVE — ECLIPSE AUTO-ROAST\n` +
       `Mode: Sequential + Keyword Triggers\n` +
       `Timing: Human Delay + Typing Indicator\n` +
       `Anti-Dupe + Anti-Spam: ENABLED ✅\n` +
-      `Spam Mode: ${spamRunning} (9s delay)\n` +
+      `Auto Mode: ${autoRunning} (9s delay — Name ↔ Message)\n` +
       `Kabuuan ng mga linya: ${totalLines}\n` +
       `Admin Status: Verified 🔒 (${AUTHORIZED_UIDS.length} admins)`,
       threadID,
@@ -335,47 +357,28 @@ module.exports.run = async function ({ api, event, args }) {
     }
   }
 
-  // 🆕 SPAM MODE — Iba-ibang mensahe, 9 segundo delay
-  if (sub === "spam") {
-    if (spamActive.get(threadID)) {
-      return api.sendMessage("⚠️ Spam Mode ay tumatakbo na. Gamitin: /activate spamstop", threadID, messageID);
+  // 🚀 AUTO MODE — GC Name ↔ Message alternating every 9s
+  if (sub === "startauto") {
+    if (autoModeActive.get(threadID)) {
+      return api.sendMessage("⚠️ Naka-ON na ang Auto Mode. Gamitin: /activate stopauto", threadID, messageID);
     }
-    const customMsg = args.slice(1).join(" ") || null;
-    await startSpam(api, threadID, customMsg);
+    await startAutoMode(api, threadID);
     return api.sendMessage(
-      `🚀 SPAM MODE: NAKA-ON ✅\n` +
-      `Delay: 9 segundo bawat mensahe\n` +
-      `Messages: Iba-iba, hindi paulit-ulit\n\n` +
-      `/activate spamstop para itigil`,
+      `🚀 AUTO MODE: NAKA-ON ✅\n\n` +
+      `🔁 Pattern: GC Name ↔ Chat Message\n` +
+      `⏱️ Delay: 9 segundo bawat palit\n` +
+      `💬 Messages: Iba-iba, hindi paulit-ulit\n` +
+      `🏷️ Names: Parang kinakausap ang sarili 😂\n\n` +
+      `/activate stopauto para itigil`,
       threadID,
       messageID
     );
   }
 
-  // 🆕 STOP SPAM
-  if (sub === "spamstop") {
-    stopSpam(threadID);
-    return api.sendMessage("🛑 SPAM MODE: NAKA-OFF ✅", threadID, messageID);
-  }
-
-  // 🆕 SET GC NAME
-  if (sub === "setgcname") {
-    const newName = args.slice(1).join(" ").trim();
-    if (!newName) {
-      return api.sendMessage("❌ Gamitin: /activate setgcname <pangalan ng group>", threadID, messageID);
-    }
-    if (newName.length > 50) {
-      return api.sendMessage("❌ Masyadong mahaba. Hanggang 50 characters lang.", threadID, messageID);
-    }
-    try {
-      api.setTitle(newName, threadID, (err) => {
-        if (err) return api.sendMessage("❌ Hindi mabago ang pangalan. Siguraduhing admin ang bot.", threadID, messageID);
-        api.sendMessage(`✅ Pinalitan na ang pangalan ng group chat:\n"${newName}"`, threadID, messageID);
-      });
-    } catch {
-      return api.sendMessage("❌ Bigo. Siguraduhing admin ang bot.", threadID, messageID);
-    }
-    return;
+  // 🛑 STOP AUTO MODE
+  if (sub === "stopauto") {
+    stopAutoMode(threadID);
+    return api.sendMessage("🛑 AUTO MODE: NAKA-OFF ✅", threadID, messageID);
   }
 
   return api.sendMessage(
@@ -386,9 +389,8 @@ module.exports.run = async function ({ api, event, args }) {
     `/activate add <text> — Magdagdag ng reply line\n` +
     `/activate listlines — Ilista lahat ng linya\n` +
     `/activate setnick — Gawing 'Ryuk pogi' lahat ng nick\n` +
-    `/activate spam [msg] — Simulan Spam Mode (9s delay, iba-iba mensahe)\n` +
-    `/activate spamstop — Itigil Spam Mode\n` +
-    `/activate setgcname <pangalan> — Palitan ang pangalan ng group chat`,
+    `/activate startauto — 🔁 Auto GC Name + Message (9s delay)\n` +
+    `/activate stopauto — 🛑 Itigil Auto Mode`,
     threadID,
     messageID
   );
