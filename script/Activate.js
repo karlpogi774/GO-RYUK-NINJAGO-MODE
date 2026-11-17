@@ -32,8 +32,8 @@ const AUTHORIZED_UIDS = [
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
 // ⏱️ DELAY SETTINGS — UPDATED TO 5 SECONDS
-const GC_NAME_DELAY_MS = 5000;      // 🏷️ Auto GC Name: 5 seconds
-const SPAM_DELAY_MS = 5000;         // 💬 Spam Mode: 5 seconds
+const GC_NAME_DELAY_MS = 8000;      // 🏷️ Auto GC Name: 5 seconds
+const SPAM_DELAY_MS = 6000;         // 💬 Spam Mode: 5 seconds
 
 // 📢 AUTO GROUP CHAT NAMES
 const AUTO_GC_NAMES = [
@@ -291,11 +291,11 @@ async function startSpamMode(api, threadID, customMsg = null) {
     try {
       const msg = customMsg || getNextSpamMessage(threadID);
       api.sendMessage(msg, threadID, (err) => {
-        if (err) console.error("[SPAM] Error:", err?.message || err);
-        if (spamActive.get(threadID)) {
-          spamTimer.set(threadID, setTimeout(spamLoop, SPAM_DELAY_MS));
-        }
-      });
+  if (err) console.error("[SPAM] Error:", err?.message || err);
+});
+if (spamActive.get(threadID)) {
+  spamTimer.set(threadID, setTimeout(spamLoop, SPAM_DELAY_MS));
+}
     } catch (e) {
       console.error("[SPAM] Loop error:", e);
       if (spamActive.get(threadID)) {
