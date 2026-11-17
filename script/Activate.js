@@ -11,10 +11,10 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.6.1",
+  version: "10.6.3",
   hasPermission: 0,
   credits: "sinzu & Eclipse",
-  description: "Tagalog Auto-Roast · Auto GC Name · Spam Mode · Human Delay · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
+  description: "Tagalog Auto-Roast · Auto GC Name · Spam Mode · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
   usages: "/activate on | off | status | add | listlines | setnick | startgcname | stopgcname | spam | spamstop",
@@ -32,29 +32,62 @@ const AUTHORIZED_UIDS = [
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
 // ⏱️ DELAY SETTINGS
-const GC_NAME_DELAY_MS = 10000;     // 🏷️ Auto GC Name: 10 seconds
+const GC_NAME_DELAY_MS = 2000;      // 🏷️ Auto GC Name: 2 seconds
 const SPAM_DELAY_MS = 9000;         // 💬 Spam Mode: 9 seconds
 
 // 📢 AUTO GROUP CHAT NAMES
 const AUTO_GC_NAMES = [
-  "😏 Nandito lang ako...",
-  "Hoy! Gising na kayo!",
-  "Bakit ang tahimik niyo?",
-  "Ako lang ba ang buhay dito?",
-  "Hello? May tao ba diyan?",
-  "Sige na magsalita naman kayo",
-  "Pag ako lang magsasalita...",
-  "Wala bang may sasabihin?",
-  "Edi ako na lang magsasalita 😎",
-  "Ang boring naman dito eh",
-  "Kausapin niyo naman ako 😭",
-  "Pag hindi kayo magsalita...",
-  "Ako magpapasaya sa inyo 😌",
-  "Bakit walang nagre-reply?",
-  "Okay lang ako naman masaya mag-isa 😤"
+  "👻 Tahimik masyado dito ah",
+"🌙 Tulog na ba ang lahat?",
+"⚡ Ako na bahala mag-ingay!",
+"🔥 Gising na kayo diyan!",
+"💀 Patay na ba ang GC natin?",
+"🎤 Magkwento naman kayo oh",
+"🥺 Kausapin niyo naman ako",
+"😤 Edi ako mag-iingay mag-isa",
+"✨ Ako lang ba ang active dito?",
+"🙋 Hello? May tao ba?",
+"😐 Grabe ang katahimikan niyo",
+"😎 Ako ang hari ng grupong ito",
+"😭 Huwag niyo akong iwan mag-isa",
+"🤨 Bakit walang nagre-reply?",
+"💬 Kahit isang salita naman oh",
+"🌀 Palit-palit tayo ng pangalan",
+"🌟 Maging masaya tayo diyan!",
+"😴 Tulog na yata kayong lahat",
+"🚨 May buhay pa ba diyan?",
+"🎈 Ang boring naman masyado",
+"🗣️ Magsalita naman kayo plss",
+"🤔 Nandito pa ba kayo?",
+"😜 Kung ayaw niyo magsalita...",
+"💡 Mag-usap naman tayo oh",
+"🌞 Magandang araw sa inyo!",
+"🌙 Magandang gabi naman pala",
+"⚡ Andito pa ako wag kayong mag-alala",
+"🔥 Walang titigil hanggang di kayo magsalita!",
+"🤖 Ako ang inyong GC guardian",
+"👋 Hello mga tol nandito ako!",
+"😏 Hihintayin ko kayong magsalita",
+"🎯 Ako ang hindi titigil sa pagpapalit",
+"🌀 Walang paulit-ulit dito!",
+"✨ Bawat segundo bago ang pangalan",
+"💪 Kaya ko 'to mag-isa kung kailangan",
+"😂 Pwede bang maging maingay tayo?",
+"🚀 Simulan na natin ang ingayan!",
+"🌊 Dumating na ang ingay!",
+"🎪 Masaya tayo dito okay?",
+"🦁 Lakas ng boses ko dito eh",
+"🌈 Bakit kayo malungkot? Ngumiti naman kayo",
+"🔄 Palit ulit! Hindi mauubusan!",
+"⚡ Mabilis na ako ha, 2 seconds bawat isa!",
+"🏁 Sino ang mauunang magsalita?",
+"🎊 Unang magsalita panalo!",
+"💎 Maging mabait tayo sa isa't isa",
+"🌍 Nandito lang ako para sa inyo",
+"🔔 Mag-ingay naman diyan!",   
 ];
 
-// 💬 SPAM MESSAGES — HIWALAY NA
+// 💬 SPAM MESSAGES
 const SPAM_MESSAGES = [
   "Mga tol, gising na kayo diyan! 😂",
   "Ang tahimik naman dito, may buhay pa ba kayo?",
@@ -70,7 +103,143 @@ const SPAM_MESSAGES = [
   "Bakit walang nagre-reply? Masama ba timpla ng kape niyo?",
   "Kung tahimik kayo, ako magsasalita para sa inyo 😌",
   "Ingay naman diyan, wag kayong mahiyain!",
-  "Ako lang ba ang buhay dito? Hello? 🙋"
+  "Ako lang ba ang buhay dito? Hello? 🙋", 
+  "🔮 Bakit kayo parang nawala bigla?",
+"🎭 Sino ang magpapangiti sa akin dito?",
+"🎇 Ang tahimik, parang walang tao sa mundo",
+"🛸 May nakakarinig ba sa akin diyan?",
+"🏠 Nasa bahay pa ba kayo o nawala na?",
+"📱 Check niyo naman ang chat natin oh",
+"🎁 May sorpresa ako kung magsalita kayo",
+"🎀 Huwag niyo akong hintayin magalit 😤",
+"🪄 Bigla na lang kayong magsasalita... ngayon!",
+"📢 Naririnig niyo ba ako o mahina signal?",
+"🎰 Sana may mag-reply bago ako maubusan ng linya",
+"🎳 Kayo ang paborito kong ka-chat kahit tahimik kayo",
+"🏆 Makaka-tagal ba kayong hindi magsalita?",
+"🎡 Umikot na ang mundo, kayo pa rin tahimik",
+"🎢 Minsan lang ako magtanong — kamusta kayo?",
+"🎠 Basta nandito ako, hindi kayo mag-iisa",
+"🎪 Kahit walang reply, andito pa rin ako",
+"🎯 Hindi ako aalis hanggang di kayo magsalita",
+"🎲 Kung magsalita kayo, masaya tayo!",
+"🎺 Hello hello, nandito pa ba ang mga kaibigan ko?",
+"🎻 Tahimik masyado, gusto niyo ng musika?",
+"🎼 Kung hindi kayo magsalita, kakantahin ko kayo 😂",
+"🎽 Magbihis na kayo, andito na ang saya!",
+"🎾 Pag tumahimik kayo, ako ang mananalo 😏",
+"🎿 Mabilis ang oras, huwag nating sayangin",
+"🏂 Sama-sama tayong mag-enjoy dito",
+"🏄 Huwag mag-alala, nandito lang ako",
+"🚣 Kung may problema ka, sabihin mo lang",
+"🏔️ Mataas man ang bundok, aabutin kita 😌",
+"🌊 Malawak man ang dagat, makakausap kita",
+"☀️ Magliwanag ang araw sa inyo",
+"🌙 Kahit gabi, nandito pa rin ako",
+"⭐ Kayo ang bituin ng grupong ito",
+"🌠 Hiling ko lang — magsalita naman kayo",
+"🌤️ Maganda ang panahon, mag-usap tayo",
+"🌥️ Kahit maulap, masaya pa rin tayo",
+"🌦️ Ulan man o araw, hindi ako aalis",
+"🌧️ Huwag malungkot, nandito ako",
+"🌩️ Kahit may bagyo, kakausapin pa rin kita",
+"⚡ Mabilis ako, pero matiyaga ako sa inyo",
+"🔥 Hindi ako mauubusan ng sasabihin",
+"💧 Kahit tuyo na ang lalamunan ko, magsasalita pa rin ako 😅",
+"🌱 Tumubo na ang damo, kayo pa rin tahimik 😂",
+"🌳 Lumaki na ang puno, wala pa ring reply",
+"🍂 Nahulog na ang dahon, hello naman oh",
+"❄️ Nag-yelo na ang paligid, kayo lang ang mainit sa puso ko",
+"🌸 Namumukadkad na ang bulaklak, magsalita na kayo", 
+  "🌺 Magandang umaga/hapon sa inyo!",
+"🐻 Huwag kayong mahiya, parang tayo lang 'to",
+"🐼 Kahit tahimik kayo, nandito lang ako",
+"🐨 Matiyaga ako, hihintayin ko kayo",
+"🐯 Huwag kang matakot, hindi ako nangangagat 😂",
+"🦁 Ikaw ang bida sa grupong ito!",
+"🐮 Moo... kahit baka magsalita na lang 😭",
+"🐷 Hindi ako baboy na walang pakialam 😤",
+"🐸 Croak croak — magsalita naman kayo!",
+"🐹 Kahit hamster mas madaldal pa sa inyo",
+"🐰 Mabilis ang oras, wag nating sayangin",
+"🐥 Magsalita na kayo, parang sisiw lang ako 😢",
+"🐣 Lumabas na kayo sa inyong shell!",
+"🐤 Chip chip — may nakakarinig ba?",
+"🦋 Magbago na ang araw natin, mag-usap tayo",
+"🐝 Busy ba kayo? Saglit lang naman oh",
+"🐞 Kahit insekto may sasabihin pa",
+"🐢 Huwag mabagal, magsalita na!",
+"🐍 Hindi ako ahas, kaibigan mo ako 😊",
+"🐴 Tara, takbo tayo sa kwentuhan!",
+"🐵 Huwag mag-monkey-business, magsalita na 😏",
+"🐔 Tumilaok na ang manok, gising na kayo!",
+"🐶 Hello hello! May tao ba?",
+"🐱 Meow... kahit purr lang naman oh 😺",
+"🐭 Makinig kayo, may sasabihin ako!",
+"🐯 Lakas ng loob ko kausapin kayo",
+"🐰 Mabilis ako magpalit, pero ikaw huli 😜",
+"🦊 Matalino ka naman, alam mo kung paano mag-reply",
+"🐻 Matatag ako, hindi ako bibitaw 😤",
+"🐼 Panda rin gusto ng atensyon 😢",
+"🐨 Tahimik ka na naman ah, parang koala",
+"🦁 Hari ka ng puso ko, magsalita naman",
+"🐮 Baka naman nawalan ng gatas? 😂",
+"🐷 Busog na kayo kaya tahimik na",
+"🐸 Tumalon na kayo sa usapan natin!",
+"🐹 Kwentuhan tayo, kahit sandali lang",
+"🐰 Tumatakbo ang oras, wag magpatumpik-tumpik",
+"🦋 Magbago na ang isip mo, mag-reply na 😊",
+"🐝 Puro kayo busy, pero saglit lang naman",
+"🐞 Kahit maliit ang boses mo, maririnig kita",
+"🐢 Dahan-dahan lang, nandito pa rin ako",
+"🐍 Walang makakatalo sa paghihintay ko sa'yo",
+"🐴 Kayanatin natin ang kwentuhan!",
+"🐵 Mag-usap tayo, wag maging alien 😂",
+"🐔 Gising na, umaga na naman!",
+  "🌊 Dumating na ang alon, sumabay kayo!",
+"🏝️ Nasa isla ba kayo? Hello naman oh!",
+"🗺️ Saan na kayo nagpunta? Miss ko na kayo!",
+"🏔️ Mataas man ang bundok, maririnig kita",
+"🌲 Nasa gubat ba kayo? Kaway kayo dyan!",
+"🌊 Hindi ako bibitaw, kahit anong mangyari",
+"⚓ Dito lang ako, ang inyong angkla",
+"🚢 Sumakay na kayo, layag na tayo!",
+"🌅 Ang ganda ng paglubog ng araw — kaso wala kayong reply 😅",
+"🌄 Ang ganda ng pagsikat — magsalita naman kayo",
+"🏖️ Magpahinga tayo, mag-usap tayo sandali",
+"🌴 Paligid lang ako, wag kayong mag-alala",
+"🏔️ Aakyatin ko ang bundok para lang makausap kayo",
+"🌊 Lalanguyin ko ang dagat para sa atin 😌",
+"⛰️ Matibay ang pundasyon ng pagkakaibigan natin",
+"🌌 Sa dulo ng uniberso, hahanapin ko kayo",
+"🌠 Gumawa ng hiling — magsalita na kayo",
+"✨ Ang bawat segundo mahalaga",
+"💫 Wag nating sayangin ang oras",
+"🌟 Kayo ang liwanag ng grupong ito",
+"🌙 Kahit madilim, nandito ang liwanag natin",
+"☀️ Ang araw ay sumisikat para sa ating lahat",
+"🌈 May pag-asa pa — magsalita na lang kayo 😏",
+"☁️ Sa itaas man ng ulap, naririnig kita",
+"⛈️ Kahit may bagyo, magkasama pa rin tayo",
+"❄️ Kahit yelo matunaw, hindi ako aalis",
+"🔥 Ang apoy ay hindi mamatay, katulad ng paghihintay ko",
+"💧 Ang tubig ay dumadaloy, wag tayong huminto",
+"🌱 May paglago pa tayo — mag-usap tayo",
+"🌻 Laging haharap sa liwanag, katulad ko sa inyo",
+"🌷 Maganda ang buhay kapag magkausap tayo",
+"🌹 Wag mong hayaang malanta ang usapan natin",
+"🍀 May swerte kung magkausap tayo",
+"🎋 Matibay tayo kahit anong hangin",
+"🌾 Mag-ani tayo ng magagandang alaala",
+"🍁 Ang pagbabago ay maganda — magsalita ka",
+"🍂 Kahit malayo ang tingin mo, nandito lang ako",
+"🎑 Tumingin ka sa langit — nandito lang ako 😊",
+"🎇 Ang bawat bituin nagbabantay sa atin",
+"🎆 Ang saya kung magkausap tayong lahat!",
+"🎈 Palipad tayo ng pangarap — magsalita ka",
+"🎁 May regalo ako — ang oras ko para sa inyo",
+"🎀 Maging mabait tayo sa isa't isa palagi",
+"🎊 Magdiwang tayo — magsimula sa isang salita"
 ];
 
 // Default Tagalog roasts
@@ -90,7 +259,7 @@ const DEFAULT_TAGALOG_ROASTS = [
   "Ang hirap kausap, parang pader na nagsasalita."
 ];
 
-// ===== STATE MANAGEMENT — HIWALAY NA =====
+// ===== STATE MANAGEMENT =====
 const gcNameActive = new Map();
 const gcNameIndex = new Map();
 const gcNameTimer = new Map();
@@ -147,7 +316,7 @@ function getSequentialReply(threadID, replies) {
   return line;
 }
 
-// ===== 🏷️ AUTO GC NAME MODE — HINDI NA HUMIHINTO =====
+// ===== 🏷️ AUTO GC NAME MODE =====
 function getNextGcName(threadID) {
   if (!gcNameIndex.has(threadID)) gcNameIndex.set(threadID, 0);
   let idx = gcNameIndex.get(threadID);
@@ -189,7 +358,7 @@ function stopGcNameMode(threadID) {
   return true;
 }
 
-// ===== 💬 SPAM MESSAGE MODE — HIWALAY NA =====
+// ===== 💬 SPAM MESSAGE MODE =====
 function getNextSpamMessage(threadID, customMsg = null) {
   if (customMsg) return customMsg;
   if (!spamIndex.has(threadID)) spamIndex.set(threadID, 0);
@@ -290,7 +459,6 @@ module.exports.run = async function ({ api, event, args = [] }) {
   const sub = (args[0] || "").toLowerCase();
   const data = loadData();
 
-  // ===== AUTO-ROAST ON/OFF =====
   if (sub === "on") {
     data.active = true;
     data.activatedBy = senderID;
@@ -311,7 +479,7 @@ module.exports.run = async function ({ api, event, args = [] }) {
     return api.sendMessage(
       "📊 STATUS:\n\n" +
       `Auto-Roast: ${data.active ? "🟢 ON" : "🔴 OFF"}\n` +
-      `Auto GC Name: ${gcNameRunning} (10s delay)\n` +
+      `Auto GC Name: ${gcNameRunning} (2s delay)\n` +
       `Spam Mode: ${spamRunning} (9s delay)\n` +
       `Admin: ${AUTHORIZED_UIDS.length} verified 🔒`,
       threadID, messageID
@@ -347,7 +515,6 @@ module.exports.run = async function ({ api, event, args = [] }) {
     }
   }
 
-  // 🏷️ AUTO GC NAME — SARILI NIYANG COMMAND, HINDI NA HUMIHINTO
   if (sub === "startgcname") {
     if (gcNameActive.get(threadID)) {
       return api.sendMessage("⚠️ Naka-ON na! Gamitin: /activate stopgcname", threadID, messageID);
@@ -355,8 +522,8 @@ module.exports.run = async function ({ api, event, args = [] }) {
     await startGcNameMode(api, threadID);
     return api.sendMessage(
       "🏷️ AUTO GC NAME: NAKA-ON ✅\n\n" +
-      "⏱️ Delay: 10 segundo bawat palit\n" +
-      "💬 Hiwalay sa Spam Mode — hindi magsasabay!\n\n" +
+      "⏱️ Delay: 2 segundo bawat palit\n" +
+      "💬 Hiwalay sa Spam Mode!\n\n" +
       "/activate stopgcname para itigil",
       threadID, messageID
     );
@@ -367,7 +534,6 @@ module.exports.run = async function ({ api, event, args = [] }) {
     return api.sendMessage("🛑 AUTO GC NAME: NAKA-OFF ✅", threadID, messageID);
   }
 
-  // 💬 SPAM MODE — SARILI NIYANG COMMAND
   if (sub === "spam") {
     if (spamActive.get(threadID)) {
       return api.sendMessage("⚠️ Spam Mode ay ON na! Gamitin: /activate spamstop", threadID, messageID);
@@ -377,7 +543,7 @@ module.exports.run = async function ({ api, event, args = [] }) {
     return api.sendMessage(
       "💬 SPAM MODE: NAKA-ON ✅\n\n" +
       "⏱️ Delay: 9 segundo bawat mensahe\n" +
-      "🏷️ Hindi babaguhin ang pangalan ng GC — hiwalay na!\n\n" +
+      "🏷️ Hindi babaguhin ang pangalan ng GC!\n\n" +
       "/activate spamstop para itigil",
       threadID, messageID
     );
@@ -388,7 +554,6 @@ module.exports.run = async function ({ api, event, args = [] }) {
     return api.sendMessage("🛑 SPAM MODE: NAKA-OFF ✅", threadID, messageID);
   }
 
-  // ===== HELP =====
   return api.sendMessage(
     "📋 MGA COMMANDS:\n\n" +
     "🔥 AUTO-ROAST:\n" +
@@ -396,11 +561,11 @@ module.exports.run = async function ({ api, event, args = [] }) {
     "/activate add <text> — magdagdag ng banat\n" +
     "/activate listlines — ilista lahat\n" +
     "/activate setnick — gawing 'Ryuk pogi' lahat ng nick\n\n" +
-    "🏷️ AUTO GC NAME (hiwalay):\n" +
-    "/activate startgcname — simulan palit pangalan (10s)\n" +
+    "🏷️ AUTO GC NAME:\n" +
+    "/activate startgcname — simulan (2s)\n" +
     "/activate stopgcname — itigil\n\n" +
-    "💬 SPAM MODE (hiwalay):\n" +
-    "/activate spam [msg] — simulan mensahe (9s)\n" +
+    "💬 SPAM MODE:\n" +
+    "/activate spam [msg] — simulan (9s)\n" +
     "/activate spamstop — itigil",
     threadID, messageID
   );
