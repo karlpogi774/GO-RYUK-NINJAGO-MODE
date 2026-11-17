@@ -51,7 +51,37 @@ const AUTO_GC_NAMES = [
   "Pag hindi kayo magsalita...",
   "Ako magpapasaya sa inyo 😌",
   "Bakit walang nagre-reply?",
-  "Okay lang ako naman masaya mag-isa 😤"
+  "Okay lang ako naman masaya mag-isa 😤",
+  "✨ Mag-usap tayo, wag mahiya!",
+  "🔥 Gising na ang lahat dyan!",
+  "💫 Tahimik masyado ang GC natin ah",
+  "⚡ May buhay pa ba dyan? Hello?",
+  "🌟 Nandito lang ako, wag kayong mag-alala",
+  "🌀 Palit-palit tayo, hindi mauubusan!",
+  "🎯 Unang magsalita panalo!",
+  "💎 Maging masaya tayo diyan okay?",
+  "🌙 Tulog na ba ang tropa?",
+  "☀️ Magandang araw sa inyo mga tol!",
+  "🚀 Simulan na ang kwentuhan!",
+  "🎪 Ang boring kung tahimik tayo eh",
+  "🗣️ Kahit hi lang, send naman oh!",
+  "🤔 Nandito pa ba kayo o nawala na?",
+  "😎 Ako ang taga-ingay kapag tahimik kayo",
+  "😭 Huwag niyo akong iwan mag-isa",
+  "😤 Ako mag-iingay hanggang magsalita kayo",
+  "🙋 May tao ba diyan? Sumagot naman!",
+  "🌈 Ngumiti naman kayo diyan!",
+  "🔄 Bawat 5s — bago hindi paulit!",
+  "🏁 Sino mauuna maghi?",
+  "🎊 Magandang araw — mag-usap tayo!",
+  "🌍 Mahalaga kayo dito ❤️",
+  "🔔 Mag-ingay naman, buhay pa tayo!",
+  "💡 May kwento ako — makinig kayo 😏",
+  "🍀 Good vibes lang dito tayo!",
+  "🦋 Bawasan ang hiya, dagdagan ang kwento",
+  "🌊 Parang alon — tayo at mag-usap!",
+  "🎈 Bawat salita, mahalaga 'yan dito",
+  "🎁 Magbigay ng ngiti — libre lang 'yan!"
 ];
 
 // 💬 SPAM MESSAGES
@@ -70,7 +100,57 @@ const SPAM_MESSAGES = [
   "Bakit walang nagre-reply? Masama ba timpla ng kape niyo?",
   "Kung tahimik kayo, ako magsasalita para sa inyo 😌",
   "Ingay naman diyan, wag kayong mahiyain!",
-  "Ako lang ba ang buhay dito? Hello? 🙋"
+  "Ako lang ba ang buhay dito? Hello? 🙋",
+  "Mga tol, gising na! Oras na para mag-ingay! 😂",
+  "Ang tahimik naman dito — parang sementeryo 😭",
+  "Sige na po, magsalita naman kayo 🥺",
+  "Buhay pa ba ang group chat na 'to o ako na lang?",
+  "Grabe ang katahimikan niyo — nakakatakot 😱",
+  "Gising mga pare, huwag tahimik dyan!",
+  "Bakit walang nagre-reply? Busy ba kayo?",
+  "Kung ayaw niyo magsalita, ako mag-e-entertain 😤",
+  "Ingay naman diyan — bawal mahiya sa tropa!",
+  "Ako lang ba active dito? Sumagot naman 🙋",
+  "Hoy! Nakikinig ba kayo o natulog na?",
+  "Mag-type lang kayo kahit '.' — sapat na 😊",
+  "Parang multo ang tahimik niyo dyan 😱",
+  "Sige dededmahin niyo ako — sanay na ako 😭",
+  "Bukas pa ba kayo magsasalita? Hihintayin ko 😤",
+  "Ang hirap niyong kausap — parang pader 😂",
+  "Magkwento kayo kahit ano — makikinig ako!",
+  "Nandito pa ba kayo o nawala na sa mundo?",
+  "Magandang araw sa inyo — kahit hindi niyo replyan 😌",
+  "Kayo ang pinakamahusay na tahimik na tropa 👏",
+  "Wala bang share ng kahit ano? Sige ako lang",
+  "Pag hindi kayo magsalita — ikakasal ako sa katahimikan 😂",
+  "Hello hello — kumusta ang araw niyo diyan?",
+  "Ang katahimikan ay nakakabingi alam niyo ba? 😅",
+  "Sige na po — isang salita lang please? 🥺",
+  "Ako lang ba kausap ng pader dito?",
+  "Pag nag-reply kayo — libre ko kayo sa pangarap 😂",
+  "Bakit parang ghost town dito bigla?",
+  "May multo man o tao — magsalita ka naman 😂",
+  "Kahit emoji lang — send naman oh 😥",
+  "Tao po! May tao po ba sa kabilang panig?",
+  "Ang bigat ng katahimikan niyo — magaan sana 😌",
+  "Buhay pa ang GC — kaya mag-ingay tayo!",
+  "Kayo ang misteryo ko — bakit ayaw magsalita? 🤔",
+  "Sige na — hindi ako kakain hangga't walang reply — charot 😂",
+  "Andito lang ako — naghihintay sa inyong salita ❤️",
+  "Masarap ang kape kapag may kasama — ako lang kasi eh 😭",
+  "Parang hindi tayo magkakilala — mag-usap naman 😅",
+  "Sino mauuna magsalita? Panalo respeto ko 😏",
+  "Kung tahimik kayo — panalo ako! Hindi ako titigil 😎",
+  "Patay na ba ang baterya niyo o signal lang?",
+  "Gising na ang mundo — kayo pa rin tulog 😂",
+  "Ako ang boses niyo kapag tahimik kayo — ang ingay ko 😜",
+  "Walang masama sa tahimik — pero masaya kung magkausap 😊",
+  "Hindi ako magsasawa — hihintayin ko kayo palagi ⏳❤️",
+  "Isang salita lang — gaganda ang araw niyo, subukan niyo!",
+  "Huwag kayong mahiya — dito kayo ligtas magsalita 😊",
+  "Ang bawat boses ay mahalaga — pati sa GC natin ❤️",
+  "Sige na — isang 'hi' lang, hindi masasaktan 😄",
+  "Mag-ingay tayo — buhay na buhay pa ang GC natin! 🎉"
 ];
 
 // Default Tagalog roasts
@@ -160,6 +240,7 @@ function getNextGcName(threadID) {
 async function startGcNameMode(api, threadID) {
   if (gcNameActive.get(threadID)) return false;
   gcNameActive.set(threadID, true);
+  gcNameIndex.set(threadID, 0);
 
   const nameLoop = async () => {
     if (!gcNameActive.get(threadID)) return;
@@ -203,6 +284,7 @@ function getNextSpamMessage(threadID, customMsg = null) {
 async function startSpamMode(api, threadID, customMsg = null) {
   if (spamActive.get(threadID)) return false;
   spamActive.set(threadID, true);
+  spamIndex.set(threadID, 0);
 
   const spamLoop = async () => {
     if (!spamActive.get(threadID)) return;
