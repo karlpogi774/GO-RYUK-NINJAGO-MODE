@@ -12,7 +12,7 @@ const { isDuplicateMessage } = require("./message-dedupe");
 module.exports.config = {
   name: "activate",
   version: "10.7.1",
-  hasPermission: 0,
+  hasPermission: 2,
   credits: "sinzu & Eclipse",
   description: "Tagalog Auto-Roast · Auto GC Name · Spam Mode · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
   usePrefix: true,
@@ -37,54 +37,21 @@ const SPAM_DELAY_MS = 5000;         // 💬 Spam Mode: 5 seconds
 
 // 📢 AUTO GROUP CHAT NAMES
 const AUTO_GC_NAMES = [
-"👻 Tahimik masyado dito ah",
-"🌙 Tulog na ba ang lahat?",
-"⚡ Ako na bahala mag-ingay!",
-"🔥 Gising na kayo diyan!",
-"💀 Patay na ba ang GC natin?",
-"🎤 Magkwento naman kayo oh",
-"🥺 Kausapin niyo naman ako",
-"😤 Edi ako mag-iingay mag-isa",
-"✨ Ako lang ba ang active dito?",
-"🙋 Hello? May tao ba?",
-"😐 Grabe ang katahimikan niyo",
-"😎 Ako ang hari ng grupong ito",
-"😭 Huwag niyo akong iwan mag-isa",
-"🤨 Bakit walang nagre-reply?",
-"💬 Kahit isang salita naman oh",
-"🌀 Palit-palit tayo ng pangalan",
-"🌟 Maging masaya tayo diyan!",
-"😴 Tulog na yata kayong lahat",
-"🚨 May buhay pa ba diyan?",
-"🎈 Ang boring naman masyado",
-"🗣️ Magsalita naman kayo plss",
-"🤔 Nandito pa ba kayo?",
-"😜 Kung ayaw niyo magsalita...",
-"💡 Mag-usap naman tayo oh",
-"🌞 Magandang araw sa inyo!",
-"🌙 Magandang gabi naman pala",
-"⚡ Andito pa ako wag kayong mag-alala",
-"🔥 Walang titigil hangga't di kayo magsalita!",
-"🤖 Ako ang inyong GC guardian",
-"👋 Hello mga tol nandito ako!",
-"😏 Hihintayin ko kayong magsalita",
-"🎯 Ako ang hindi titigil sa pagpapalit",
-"🌀 Walang paulit-ulit dito!",
-"✨ Bawat segundo bago ang pangalan",
-"💪 Kaya ko 'to mag-isa kung kailangan",
-"😂 Pwede bang maging maingay tayo?",
-"🚀 Simulan na natin ang ingayan!",
-"🌊 Dumating na ang ingay!",
-"🎪 Masaya tayo dito okay?",
-"🦁 Lakas ng boses ko dito eh",
-"🌈 Bakit kayo malungkot? Ngumiti naman kayo",
-"🔄 Palit ulit! Hindi mauubusan!",
-"⚡ 5 segundo bawat isa! Bilis!",
-"🏁 Sino ang mauunang magsalita?",
-"🎊 Unang magsalita panalo!",
-"💎 Maging mabait tayo sa isa't isa",
-"🌍 Nandito lang ako para sa inyo",
-"🔔 Mag-ingay naman diyan!" 
+  "😏 Nandito lang ako...",
+  "Hoy! Gising na kayo!",
+  "Bakit ang tahimik niyo?",
+  "Ako lang ba ang buhay dito?",
+  "Hello? May tao ba diyan?",
+  "Sige na magsalita naman kayo",
+  "Pag ako lang magsasalita...",
+  "Wala bang may sasabihin?",
+  "Edi ako na lang magsasalita 😎",
+  "Ang boring naman dito eh",
+  "Kausapin niyo naman ako 😭",
+  "Pag hindi kayo magsalita...",
+  "Ako magpapasaya sa inyo 😌",
+  "Bakit walang nagre-reply?",
+  "Okay lang ako naman masaya mag-isa 😤"
 ];
 
 // 💬 SPAM MESSAGES
@@ -136,23 +103,6 @@ const SPAM_MESSAGES = [
 "Kahit simpleng 'hi' lang, sapat na sa akin 😊",
 "Bakit ganun? Mas madaling magsalita ang pader kaysa sa inyo 😂",
 "Ako ang hindi bibitaw hangga't hindi kayo nag-iingay dito!"
-];
-
-// Default Tagalog roasts
-const DEFAULT_TAGALOG_ROASTS = [
-  "Luh, nag-type pa talaga siya oh, akala mo naman may kumpirmasyon. 💀",
-  "Lods, paki-delete na lang 'to bago pa makita ng iba, nakakahiya. 🤣",
-  "Lakas ng loob mo mag-chat, pero yung sinabi mo walang kwenta.",
-  "Sino nagtanong sa'yo? Lakas maka-main character ah.",
-  "Bro, isip muna bago pindot ng send button, napapahalata ka eh.",
-  "Pang-asar ba 'yan o self-humiliation? Clarify natin.",
-  "Sana bago ka nag-text, nag-isip ka muna ng limang beses.",
-  "Quiet ka na lang muna lods, nauubusan na kami ng patience sa'yo.",
-  "I-off mo na wifi mo, hindi para sa'yo ang araw na 'to.",
-  "Ganda ng sinabi mo ah, kasing ganda ng blankong papel. 🤡",
-  "Confidence level: 100%. Sense level: 0%.",
-  "Ang daldal mo pero wala namang laman. Classic.",
-  "Ang hirap kausap, parang pader na nagsasalita."
 ];
 
 // ===== STATE MANAGEMENT =====
