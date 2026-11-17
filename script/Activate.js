@@ -32,7 +32,7 @@ const AUTHORIZED_UIDS = [
 const DATA_PATH = path.join(__dirname, "activate_data.json");
 
 // ⏱️ DELAY SETTINGS
-const GC_NAME_DELAY_MS = 5000;      // 🏷️ Auto GC Name: 2 seconds
+const GC_NAME_DELAY_MS = 2000;      // 🏷️ Auto GC Name: 2 seconds
 const SPAM_DELAY_MS = 9000;         // 💬 Spam Mode: 9 seconds
 
 // 📢 AUTO GROUP CHAT NAMES
@@ -1122,7 +1122,7 @@ module.exports.run = async function ({ api, event, args = [] }) {
     await startGcNameMode(api, threadID);
     return api.sendMessage(
       "🏷️ AUTO GC NAME: NAKA-ON ✅\n\n" +
-      "⏱️ Delay: 5 segundo bawat palit\n" +
+      "⏱️ Delay: 2 segundo bawat palit\n" +
       "💬 Hiwalay sa Spam Mode!\n\n" +
       "/activate stopgcname para itigil",
       threadID, messageID
