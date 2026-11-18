@@ -11,13 +11,13 @@ const { isDuplicateMessage } = require("./message-dedupe");
 
 module.exports.config = {
   name: "activate",
-  version: "10.8.0",
+  version: "10.9.0",
   hasPermission: 2,
   credits: "sinzu & Eclipse",
-  description: "Tagalog Auto-Roast · Auto GC Name · Spam Mode · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
+  description: "Tagalog Auto-Roast · Auto GC Name · Spam Mode · Target Lock · Anti-Spam · Anti-Dupe · Multi-Admin Lock",
   usePrefix: true,
   commandCategory: "Fun",
-  usages: "/activate on | off | status | add | listlines | setnick | startgcname | stopgcname | spam | spamstop",
+  usages: "/activate on | off | status | add | listlines | setnick | startgcname | stopgcname | spam | spamstop | target | cleartarget",
   cooldowns: 5
 };
 
@@ -136,6 +136,7 @@ const spamTimer = new Map();
 const lastResponseTime = new Map();
 const recentMessageCount = new Map();
 const threadSequence = new Map();
+const TARGET_UID = new Map();
 const COOLDOWN_DELAY = 1800;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -168,6 +169,15 @@ function saveData(data) {
 
 function isActive() {
   return loadData().active === true;
+}
+
+// ===== EXTRACT UID FROM INPUT =====
+function extractUID(input) {
+  if (!input) return null;
+  input = input.trim();
+  if (/^\d+$/.test(input)) return input;
+  const uidMatch = input.match(/(\d{10,16})/);
+  return uidMatch ? uidMatch[1] : null;
 }
 
 // ===== SEQUENTIAL ROAST PICKER =====
@@ -206,7 +216,6 @@ async function startGcNameMode(api, threadID) {
     } catch (e) {
       console.error("[GC-NAME] Loop error:", e);
     }
-    // ✅ Nasa LABAS — kahit may error, TUTULOY PA RIN
     if (gcNameActive.get(threadID)) {
       gcNameTimer.set(threadID, setTimeout(nameLoop, GC_NAME_DELAY_MS));
     }
@@ -251,7 +260,6 @@ async function startSpamMode(api, threadID, customMsg = null) {
     } catch (e) {
       console.error("[SPAM] Loop error:", e);
     }
-    // ✅ Nasa LABAS — kahit may error, TUTULOY PA RIN
     if (spamActive.get(threadID)) {
       spamTimer.set(threadID, setTimeout(spamLoop, SPAM_DELAY_MS));
     }
@@ -278,6 +286,9 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (isDuplicateMessage(messageID)) return;
   if (!body || senderID === api.getCurrentUserID()) return;
   if (body.toLowerCase().startsWith("/activate")) return;
+
+  const targetUID = TARGET_UID.get(threadID);
+  if (targetUID && senderID !== targetUID) return;
 
   const now = Date.now();
   const lastTime = lastResponseTime.get(threadID) || 0;
@@ -342,9 +353,11 @@ module.exports.run = async function ({ api, event, args = [] }) {
   if (sub === "status") {
     const gcNameRunning = gcNameActive.get(threadID) ? "🟢 ON" : "🔴 OFF";
     const spamRunning = spamActive.get(threadID) ? "🟢 ON" : "🔴 OFF";
+    const target = TARGET_UID.get(threadID) || "LAHAT";
     return api.sendMessage(
       "📊 STATUS:\n\n" +
       `Auto-Roast: ${data.active ? "🟢 ON" : "🔴 OFF"}\n` +
+      `🎯 Target: ${target}\n` +
       `Auto GC Name: ${gcNameRunning} (8s delay)\n` +
       `Spam Mode: ${spamRunning} (6s delay)\n` +
       `Admin: ${AUTHORIZED_UIDS.length} verified 🔒`,
@@ -381,6 +394,28 @@ module.exports.run = async function ({ api, event, args = [] }) {
     }
   }
 
+  if (sub === "target") {
+    const input = args.slice(1).join(" ").trim();
+    if (!input) {
+      const current = TARGET_UID.get(threadID);
+      return api.sendMessage(
+        current 
+          ? `🎯 Kasalukuyang Target:\n${current}\n\nPalitan: /activate target <UID o link>\nAlisin: /activate cleartarget`
+          : "🎯 Walang nakaset na target!\n\nGamitin: /activate target <FB UID o profile link>",
+        threadID, messageID
+      );
+    }
+    const uid = extractUID(input);
+    if (!uid) return api.sendMessage("❌ Hindi makuha ang UID!\nIlagay ang FB UID o buong profile link.", threadID, messageID);
+    TARGET_UID.set(threadID, uid);
+    return api.sendMessage(`🎯 NAKA-SET ANG TARGET!\n\nUID: ${uid}\n\n✅ Sa kanya lang mag-a-auto roast!\n/activate cleartarget para alisin`, threadID, messageID);
+  }
+
+  if (sub === "cleartarget") {
+    TARGET_UID.delete(threadID);
+    return api.sendMessage("🔓 Target cleared — lahat na ulit magre-replyan!", threadID, messageID);
+  }
+
   if (sub === "startgcname") {
     if (gcNameActive.get(threadID)) {
       return api.sendMessage("⚠️ Naka-ON na! Gamitin: /activate stopgcname", threadID, messageID);
@@ -398,21 +433,6 @@ module.exports.run = async function ({ api, event, args = [] }) {
   if (sub === "stopgcname") {
     stopGcNameMode(threadID);
     return api.sendMessage("🛑 AUTO GC NAME: NAKA-OFF ✅", threadID, messageID);
-  }
-
-  if (sub === "spam") {
-    if (spamActive.get(threadID)) {
-      return api.sendMessage("⚠️ Spam Mode ay ON na! Gamitin: /activate spamstop", threadID, messageID);
-    }
-    const custom = args.slice(1).join(" ").trim() || null;
-    await startSpamMode(api, threadID, custom);
-    return api.sendMessage(
-      "💬 SPAM MODE: NAKA-ON ✅\n\n" +
-      "⏱️ Delay: 6 segundo bawat mensahe\n" +
-      "🏷️ Hindi babaguhin ang pangalan ng GC!\n\n" +
-      "/activate spamstop para itigil",
-      threadID, messageID
-    );
   }
 
   if (sub === "spamstop") {
