@@ -100,27 +100,38 @@ The dashboard API's origin check is controlled by `ECLIPSE_DASHBOARD_ORIGIN`. Da
 Keep this branch separate until syntax checks and a real test session are verified. Do not deploy solely because the dashboard page loads. Confirm the dashboard API key, CORS origin, session login, command handling, direct targeting, thread cooldown, and pause/resume behavior before merging.
 
 
+## ECLIPSE Test Bot controls
+
+The dashboard's Countdown, Mass SetNN, Auto-lock GC name, and MESS target settings are owner-managed. Enter the same `ECLIPSE_DASHBOARD_API_KEY` configured on the Render service in the dashboard key field. Dashboard origin allowlisting is an additional browser restriction, not a replacement for the owner key.
+
+Persistent feature configuration and countdown history use Neon PostgreSQL. The controls store uses `ECLIPSE_CONTROLS_DATABASE_URL` when supplied, then falls back to `ECLIPSE_LICENSE_DATABASE_URL` or `DATABASE_URL`. No extra database is required when the existing Neon connection is available.
+
+- **Countdown:** choose a group and a member by Messenger ID. The default inactivity period is five minutes, followed by 1–100 at two-second intervals. A message from the selected member during the count cancels the run and records a loss; a completed count records a win. Active state and history are persisted so a restart can resume safely.
+- **Mass SetNN:** select up to 50 current group members and apply one nickname. Membership is revalidated server-side and changes are serialized with a delay between writes.
+- **Auto-lock GC name:** save an expected title per group. Title-change events trigger repair, with a ten-minute reconciliation fallback and a bounded repair cooldown.
+- **MESS reactions:** select everyone, group admins, or one chosen member. Custom targets are scoped to the selected Messenger group and saved in Neon.
+
+The features are independent per `test-bot` namespace. They do not alter the main bot or its dashboard. Test these controls in a group where you have permission to change nicknames and group titles before relying on them.
+
 ## Raid Mode (Test Bot instance)
 
-Raid Mode is a dashboard-only persistent group-theme enforcer. It can enforce the selected group's title, one configured nickname across all current members, and the configured group photo. It does not send Messenger activation or confirmation messages.
+Raid Mode is a dashboard-only persistent group-theme enforcer. It can enforce the selected group's title, one configured nickname across current members, and the configured group photo. It does not send Messenger activation or confirmation messages.
 
-The Test Bot's Raid Mode state is stored under the `test-bot` namespace. Theme metadata is stored in the separate `eclipse_raid_themes` table; selected groups and enforcement history use `eclipse_raid_groups` and `eclipse_raid_events`. These tables do not overlap with the Anti-Fork licensing tables. A second bot can use the same Neon database and theme ID while keeping a different bot namespace and its own independent group activation state/dashboard.
+All Raid Mode data is stored in the existing Neon PostgreSQL database: theme settings, uploaded group photo bytes, selected groups, and enforcement history. The app automatically creates or upgrades the Raid Mode tables during startup. Test Bot uses the `test-bot` namespace so its group activation state stays separate from other bot instances sharing the same Neon database.
 
-Configure these private Render environment variables before using Raid Mode:
+Only the existing database connection is needed:
+- `ECLIPSE_LICENSE_DATABASE_URL` (preferred when already configured), or
+- `DATABASE_URL` as a fallback.
+- `ECLIPSE_RAID_DATABASE_URL` is optional and only needed if Raid Mode should use a different Neon database.
 
-| Variable | Purpose |
-| --- | --- |
-| `ECLIPSE_RAID_DATABASE_URL` | Neon PostgreSQL connection string. If omitted, the existing `ECLIPSE_LICENSE_DATABASE_URL` or `DATABASE_URL` is used. |
-| `ECLIPSE_RAID_S3_ENDPOINT` | S3-compatible object-storage endpoint, such as a Cloudflare R2 account endpoint. |
-| `ECLIPSE_RAID_S3_BUCKET` | Private bucket used for Raid Mode theme images. |
-| `ECLIPSE_RAID_S3_ACCESS_KEY_ID` | Object-storage access key ID. |
-| `ECLIPSE_RAID_S3_SECRET_ACCESS_KEY` | Object-storage secret access key. |
-| `ECLIPSE_RAID_S3_REGION` | S3 signing region; use `auto` for Cloudflare R2. |
-| `ECLIPSE_RAID_THEME_ID` | Optional theme key. Defaults to `shared`; use the same value across bot instances only when intentionally reusing one theme. |
-| `ECLIPSE_RAID_BOT_NAMESPACE` | Optional group-state namespace. Test Bot defaults to `test-bot`. |
+No Cloudflare R2, S3 bucket, object-storage credentials, or separate image service is required. Group photos are stored in Neon as BYTEA, with PNG, JPEG, and WebP uploads limited to 5 MB. Existing dashboard API-key authorization and Messenger session permissions still apply.
 
-The dashboard management endpoints require the existing `X-ECLIPSE-DASHBOARD-KEY` configured through `ECLIPSE_DASHBOARD_API_KEY`. Enter that key in the Raid Mode panel; it is sent as a request header and is not saved in browser storage. Upload accepts PNG, JPEG, or WebP up to 5 MB. Image bytes are stored in the private S3-compatible bucket; only the object key and metadata are stored in Neon.
+Activation requires a saved theme, uploaded photo, selected groups, and explicit dashboard confirmation. Event-driven repairs listen for group title/photo, nickname, and membership/admin mutations. A 10-minute reconciliation loop provides a fallback; the image is re-applied at most every 30 minutes during periodic reconciliation. Failed repairs record dashboard-visible status and use bounded backoff, with longer waits for rate-limit responses. Emergency Stop disables enforcement for all groups in this Test Bot namespace.
 
-Activation requires a saved theme, uploaded photo, selected group(s), and explicit dashboard confirmation. Event-driven repairs listen for group title/photo, nickname, and membership/admin mutations. A 10-minute reconciliation loop provides a fallback; the image is re-applied at most every 30 minutes during periodic reconciliation. Failed repairs record dashboard-visible status and use bounded backoff, with longer waits for rate-limit responses. Emergency Stop disables enforcement for all groups in this Test Bot namespace.
+Before activation, verify Neon connectivity, dashboard API key authorization, Messenger session permissions, and a live test group.
 
-Before activation, verify the Neon and object-storage settings, dashboard API key, Messenger session permissions, and image bucket access. Do not deploy this feature until a live group test confirms all three Messenger mutations and event delivery.
+## Reply timing and Spam Mode
+
+The group dashboard's **Reply delay seconds** is an explicit minimum wait before an automatic Banat reply begins. Enter `5` for five seconds; the backend stores milliseconds and logs the scheduled delay. An empty value uses the humanized default. The send queue's separate per-group cooldown remains independent.
+
+**Spam Mode** is an owner-controlled dashboard action for one selected Messenger group. Enter a message or a list and an interval (2–3600 seconds; default 6). A compact numbered list such as `1. lah 2. oo 3. sige`, or newline-separated entries, is split into separate messages and sent in order once (`1. lah`, then `2. oo`, then `3. sige`). Plain multi-line entries are also sent separately. A single message is repeated with an increasing number prefix through 1000 sends. Every send waits for the configured interval; the first message is delayed by that interval. Runs stop when the list finishes, after 1000 repeated sends, when manually stopped, on send failure, Messenger disconnect, bot pause, or license revocation. Only one run can be active per group; runs do not resume after a process restart.

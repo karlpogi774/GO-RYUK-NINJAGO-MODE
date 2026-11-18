@@ -8,53 +8,6 @@ const hash = value => crypto.createHash("sha256").update(value).digest("hex");
 const hmac = (key, value) => crypto.createHmac("sha256", key).update(value).digest();
 const encodePath = value => String(value).split("/").map(encodeURIComponent).join("/");
 
-function createObjectStore(env = process.env) {
-  const endpoint = String(env.ECLIPSE_RAID_S3_ENDPOINT || "").replace(/\/+$/, "");
-  const bucket = String(env.ECLIPSE_RAID_S3_BUCKET || "");
-  const accessKey = String(env.ECLIPSE_RAID_S3_ACCESS_KEY_ID || "");
-  const secretKey = String(env.ECLIPSE_RAID_S3_SECRET_ACCESS_KEY || "");
-  const region = String(env.ECLIPSE_RAID_S3_REGION || "auto");
-  const configured = Boolean(endpoint && bucket && accessKey && secretKey);
-  async function request(method, key, body = null, contentType = "") {
-    if (!configured) throw new Error("Raid Mode image storage is not configured. Set the ECLIPSE_RAID_S3_* environment variables.");
-    const base = new URL(endpoint);
-    const prefix = base.pathname.replace(/\/+$/, "");
-    const canonicalUri = (prefix + "/" + encodeURIComponent(bucket) + "/" + encodePath(key)).replace(/\/{2,}/g, "/");
-    const url = base.origin + canonicalUri;
-    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-    const dateStamp = amzDate.slice(0, 8);
-    const payload = body || Buffer.alloc(0);
-    const payloadHash = hash(payload);
-    const headers = { "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
-    if (contentType) headers["content-type"] = contentType;
-    const signedNames = Object.keys(headers).map(x => x.toLowerCase()).sort();
-    const allHeaders = { host: base.host, ...headers };
-    const canonicalHeaders = Object.keys(allHeaders).sort().map(name => name + ":" + String(allHeaders[name]).trim() + "\n").join("");
-    const signedHeaders = ["host"].concat(signedNames).sort().join(";");
-    const canonicalRequest = [method, canonicalUri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
-    const scope = dateStamp + "/" + region + "/s3/aws4_request";
-    const stringToSign = ["AWS4-HMAC-SHA256", amzDate, scope, hash(canonicalRequest)].join("\n");
-    const dateKey = hmac(Buffer.from("AWS4" + secretKey), dateStamp);
-    const regionKey = hmac(dateKey, region);
-    const serviceKey = hmac(regionKey, "s3");
-    const signingKey = hmac(serviceKey, "aws4_request");
-    const signature = crypto.createHmac("sha256", signingKey).update(stringToSign).digest("hex");
-    const authorization = "AWS4-HMAC-SHA256 Credential=" + accessKey + "/" + scope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
-    const response = await fetch(url, { method, headers: { ...headers, Authorization: authorization }, body: method === "PUT" ? payload : undefined });
-    if (!response.ok) {
-      const detail = (await response.text().catch(() => "")).slice(0, 300);
-      throw new Error("Raid image storage " + method + " failed (" + response.status + ")" + (detail ? ": " + detail : ""));
-    }
-    return method === "GET" ? Buffer.from(await response.arrayBuffer()) : true;
-  }
-  return {
-    configured,
-    put: (key, body, contentType) => request("PUT", key, body, contentType),
-    get: key => request("GET", key),
-    delete: key => request("DELETE", key)
-  };
-}
-
 function invoke(api, method, args) {
   return new Promise((resolve, reject) => {
     if (!api || typeof api[method] !== "function") return reject(new Error("Messenger API method " + method + " is unavailable."));
@@ -100,16 +53,19 @@ function createRaidMode(options = {}) {
     connectionString: databaseUrl, max: 2, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000,
     ssl: /sslmode=require/i.test(databaseUrl) ? { rejectUnauthorized: false } : undefined
   }) : null;
-  const objectStore = options.objectStore || createObjectStore(env);
+  const imageStore = options.imageStore || null;
   const apiGetter = options.getApi || (() => null);
   const inFlight = new Map();
+  const eventRepairCooldown = new Map();
+  const repairLogCooldown = new Map();
   let initialized = false, initError = "", reconcileTimer = null, lastEventAt = null, stopGeneration = 0;
 
   async function initialize() {
-    if (!pool) { initError = "Raid Mode requires ECLIPSE_RAID_DATABASE_URL (or the existing Neon database URL)."; return false; }
+    if (!pool) { initError = "Raid Mode needs the existing Neon database connection (ECLIPSE_LICENSE_DATABASE_URL or DATABASE_URL)."; return false; }
     try {
       await pool.query([
-        "CREATE TABLE IF NOT EXISTS eclipse_raid_themes (theme_id TEXT PRIMARY KEY, theme JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())",
+        "CREATE TABLE IF NOT EXISTS eclipse_raid_themes (theme_id TEXT PRIMARY KEY, theme JSONB NOT NULL, image_bytes BYTEA, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())",
+        "ALTER TABLE eclipse_raid_themes ADD COLUMN IF NOT EXISTS image_bytes BYTEA",
         "CREATE TABLE IF NOT EXISTS eclipse_raid_groups (bot_namespace TEXT NOT NULL, thread_id TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT FALSE, status TEXT NOT NULL DEFAULT 'off', last_sync TIMESTAMPTZ, last_image_sync TIMESTAMPTZ, last_error TEXT, failures INTEGER NOT NULL DEFAULT 0, next_retry_at TIMESTAMPTZ, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (bot_namespace,thread_id))",
         "ALTER TABLE eclipse_raid_groups ADD COLUMN IF NOT EXISTS last_image_sync TIMESTAMPTZ",
         "CREATE INDEX IF NOT EXISTS eclipse_raid_groups_enabled_idx ON eclipse_raid_groups (bot_namespace,enabled)",
@@ -152,38 +108,41 @@ function createRaidMode(options = {}) {
     if (!nickname) throw new Error("Enter the nickname to apply to every member.");
     const current = await getTheme();
     const theme = {
-      groupTitle, nickname, imageKey: current?.imageKey || null,
+      groupTitle, nickname, imageKey: null,
       imageType: current?.imageType || null, imageName: current?.imageName || null,
       updatedAt: new Date().toISOString()
     };
     await writeTheme(theme);
-    await record("theme-saved", null, { groupTitle, hasImage: Boolean(theme.imageKey) });
+    await record("theme-saved", null, { groupTitle, hasImage: Boolean(theme.imageType) });
     return theme;
   }
 
   async function uploadImage(buffer, contentType, fileName = "raid-theme") {
     if (!initialized) throw new Error(initError || "Raid Mode storage is unavailable.");
-    if (!objectStore.configured) throw new Error("Persistent image storage is not configured. Add the ECLIPSE_RAID_S3_* settings first.");
-    const allowed = new Map([["image/png", ".png"], ["image/jpeg", ".jpg"], ["image/webp", ".webp"]]);
-    const extension = allowed.get(String(contentType || "").toLowerCase());
-    if (!extension) throw new Error("Use a PNG, JPEG, or WebP image.");
+    const allowed = new Set(["image/png", "image/jpeg", "image/webp"]);
+    const type = String(contentType || "").toLowerCase();
+    if (!allowed.has(type)) throw new Error("Use a PNG, JPEG, or WebP image.");
     if (!Buffer.isBuffer(buffer) || !buffer.length || buffer.length > 5 * 1024 * 1024) throw new Error("Image must be between 1 byte and 5 MB.");
-    const key = "raid-themes/" + themeId + "/" + crypto.randomUUID() + extension;
-    await objectStore.put(key, buffer, contentType);
+    // Verify the file signature instead of trusting the browser-supplied MIME type.
+    const valid = type === "image/png" ? buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+      : type === "image/jpeg" ? buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+      : buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
+    if (!valid) throw new Error("The uploaded file does not match its image type.");
     const current = await getTheme() || { groupTitle: "", nickname: "" };
-    const previousKey = current.imageKey;
-    const theme = { ...current, imageKey: key, imageType: contentType, imageName: String(fileName || "raid-theme").slice(0, 120), updatedAt: new Date().toISOString() };
-    try { await writeTheme(theme); }
-    catch (error) { await objectStore.delete(key).catch(() => {}); throw error; }
-    if (previousKey && previousKey !== key) await objectStore.delete(previousKey).catch(() => {});
-    await record("theme-image-uploaded", null, { contentType, bytes: buffer.length });
-    return { imageName: theme.imageName, imageType: theme.imageType, updatedAt: theme.updatedAt };
+    const theme = { ...current, imageKey: null, imageType: type, imageName: String(fileName || "raid-theme").slice(0, 120), updatedAt: new Date().toISOString() };
+    await pool.query(
+      "INSERT INTO eclipse_raid_themes (theme_id,theme,image_bytes,updated_at) VALUES ($1,$2::jsonb,$3,NOW()) ON CONFLICT (theme_id) DO UPDATE SET theme=EXCLUDED.theme,image_bytes=EXCLUDED.image_bytes,updated_at=NOW()",
+      [themeId, JSON.stringify(theme), buffer]
+    );
+    await record("theme-image-uploaded", null, { contentType: type, bytes: buffer.length });
+    return { imageName: theme.imageName, imageType: type, updatedAt: theme.updatedAt };
   }
-
   async function getImage() {
-    const theme = await getTheme();
-    if (!theme?.imageKey) return null;
-    return { buffer: await objectStore.get(theme.imageKey), contentType: theme.imageType || "image/png" };
+    if (!initialized) return null;
+    const result = await pool.query("SELECT image_bytes, theme->>'imageType' AS image_type FROM eclipse_raid_themes WHERE theme_id=$1", [themeId]);
+    const row = result.rows[0];
+    if (!row?.image_bytes) return null;
+    return { buffer: Buffer.from(row.image_bytes), contentType: row.image_type || "image/png" };
   }
 
   async function getGroups() {
@@ -199,11 +158,11 @@ function createRaidMode(options = {}) {
     const theme = await getTheme().catch(() => null);
     const groups = await getGroups().catch(() => []);
     return {
-      available: Boolean(initialized), ready: Boolean(initialized && objectStore.configured),
+      available: Boolean(initialized), ready: Boolean(initialized),
       active: groups.some(group => group.enabled), namespace,
-      theme: theme ? { groupTitle: theme.groupTitle, nickname: theme.nickname, imageName: theme.imageName, hasImage: Boolean(theme.imageKey), updatedAt: theme.updatedAt } : null,
-      groups, imageStorageConfigured: objectStore.configured,
-      error: initError || (!objectStore.configured ? "Persistent image storage is not configured." : null),
+      theme: theme ? { groupTitle: theme.groupTitle, nickname: theme.nickname, imageName: theme.imageName, hasImage: Boolean(theme.imageType), updatedAt: theme.updatedAt } : null,
+      groups, imageStorageConfigured: Boolean(initialized),
+      storage: "neon", error: initError || null,
       lastEventAt
     };
   }
@@ -224,7 +183,7 @@ function createRaidMode(options = {}) {
     };
     await stillEnabled();
     const theme = await getTheme();
-    if (!theme?.groupTitle || !theme?.nickname || !theme?.imageKey) throw new Error("Complete the Raid theme and upload its group photo before activation.");
+    if (!theme?.groupTitle || !theme?.nickname || !theme?.imageType) throw new Error("Complete the Raid theme and upload its group photo before activation.");
     const info = await invoke(api, "getThreadInfo", [String(threadID)]);
     if (!info) throw new Error("Messenger returned no group information for this thread.");
     if (info.isGroup === false || Number(info.threadType) === 1) throw new Error("Raid Mode can only be activated for group chats.");
@@ -248,8 +207,9 @@ function createRaidMode(options = {}) {
     const forceImage = reason === "activation" || reason === "manual-repair" || /thread.?image/i.test(reason) || Date.now() - lastImageSync >= 30 * 60_000;
     if (forceImage) {
       await stillEnabled();
-      const image = await objectStore.get(theme.imageKey);
-      await changeRaidGroupImage(api, Readable.from([image]), threadID);
+      const image = await getImage();
+      if (!image?.buffer) throw new Error("Raid Mode group photo is missing from Neon. Upload it again.");
+      await changeRaidGroupImage(api, Readable.from([image.buffer]), threadID);
       await pool.query("UPDATE eclipse_raid_groups SET last_image_sync=NOW() WHERE bot_namespace=$1 AND thread_id=$2", [namespace, String(threadID)]);
     }
     return { participants: participantIDs.length };
@@ -274,8 +234,9 @@ function createRaidMode(options = {}) {
       } catch (error) {
         const message = String(error?.message || error);
         const failures = Number(current.rows[0].failures || 0) + 1;
+        const transientConnection = /EPIPE|EHOSTUNREACH|ECONNRESET|ECONNREFUSED|socket hang up|Messenger is disconnected/i.test(message);
         const rateLimited = /rate.?limit|1675004|1545012|temporarily unavailable/i.test(message);
-        const delay = rateLimited ? 5 * 60_000 : Math.min(15 * 60_000, 15000 * (2 ** Math.min(failures - 1, 5)));
+        const delay = (rateLimited || transientConnection) ? 5 * 60_000 : Math.min(15 * 60_000, 15000 * (2 ** Math.min(failures - 1, 5)));
         const next = new Date(Date.now() + delay).toISOString();
         await setGroupState(id, "error", message, failures, next);
         await record("group-repair-failed", id, { reason, error: message, failures, retryAt: next });
@@ -288,9 +249,8 @@ function createRaidMode(options = {}) {
 
   async function activate(input = {}) {
     if (!initialized) throw new Error(initError || "Raid Mode storage is unavailable.");
-    if (!objectStore.configured) throw new Error("Persistent image storage is not configured.");
     const theme = await getTheme();
-    if (!theme?.groupTitle || !theme?.nickname || !theme?.imageKey) throw new Error("Save a complete theme and upload its photo before activating Raid Mode.");
+    if (!theme?.groupTitle || !theme?.nickname || !theme?.imageType) throw new Error("Save a complete theme and upload its photo before activating Raid Mode.");
     const ids = [...new Set((Array.isArray(input.threadIDs) ? input.threadIDs : []).map(x => String(x).trim()).filter(Boolean))].slice(0, 50);
     if (!ids.length) throw new Error("Select at least one Messenger group.");
     for (const id of ids) {
@@ -316,22 +276,42 @@ function createRaidMode(options = {}) {
     return { stopped: result.rowCount };
   }
 
+  function logRepairFailureOnce(threadID, kind, error) {
+    const id = String(threadID);
+    const key = kind + ":" + id;
+    const now = Date.now();
+    const previous = repairLogCooldown.get(key) || 0;
+    if (now - previous < 60_000) return;
+    repairLogCooldown.set(key, now);
+    if (repairLogCooldown.size > 500) {
+      for (const [entry, at] of repairLogCooldown) if (now - at > 10 * 60_000) repairLogCooldown.delete(entry);
+    }
+    console.warn("[RAID] " + kind + " failed for " + id + ":", error?.message || error);
+  }
+
   async function handleEvent(event) {
     if (!initialized || !isRaidMutationEvent(event)) return;
     const type = [event.type, event.logMessageType, event.logMessageData?.type].filter(Boolean).join(" ").toLowerCase();
     const id = String(event.threadID);
     const found = await pool.query("SELECT enabled FROM eclipse_raid_groups WHERE bot_namespace=$1 AND thread_id=$2", [namespace, id]).catch(() => ({ rows: [] }));
     if (!found.rows[0]?.enabled) return;
+    const now = Date.now();
+    const lastRepair = eventRepairCooldown.get(id) || 0;
+    if (now - lastRepair < 30_000) return;
+    eventRepairCooldown.set(id, now);
+    if (eventRepairCooldown.size > 500) {
+      for (const [entry, at] of eventRepairCooldown) if (now - at > 10 * 60_000) eventRepairCooldown.delete(entry);
+    }
     lastEventAt = new Date().toISOString();
     await record("mutation-detected", id, { type });
-    repairGroup(id, "event:" + type).catch(error => console.warn("[RAID] event repair failed for " + id + ":", error?.message || error));
+    repairGroup(id, "event:" + type).catch(error => logRepairFailureOnce(id, "event repair", error));
   }
 
   async function reconcile() {
     if (!initialized) return;
     const result = await pool.query("SELECT thread_id FROM eclipse_raid_groups WHERE bot_namespace=$1 AND enabled=TRUE ORDER BY updated_at ASC", [namespace]);
     for (const row of result.rows) {
-      repairGroup(row.thread_id, "periodic-reconcile").catch(error => console.warn("[RAID] reconciliation failed for " + row.thread_id + ":", error?.message || error));
+      repairGroup(row.thread_id, "periodic-reconcile").catch(error => logRepairFailureOnce(row.thread_id, "reconciliation", error));
       await sleep(1500);
     }
   }
@@ -351,4 +331,4 @@ function createRaidMode(options = {}) {
     isInitialized: () => initialized
   };
 }
-module.exports = { createRaidMode, createObjectStore, changeNickname, setRaidTitle, changeRaidGroupImage, isRaidMutationEvent };
+module.exports = { createRaidMode, changeNickname, setRaidTitle, changeRaidGroupImage, isRaidMutationEvent };

@@ -32,9 +32,9 @@ module.exports = function startDashboardApi(port, getStatus, controls = {}) {
     req.on("error",error=>{if(!settled){settled=true;reject(error);}});
   });
 
-  const readJson = (req) => new Promise((resolve,reject)=>{
+  const readJson = (req, maxBytes = 150 * 1024) => new Promise((resolve,reject)=>{
     let raw="";
-    req.on("data",chunk=>{raw+=chunk;if(raw.length>150*1024){reject(new Error("Request body too large"));req.destroy();}});
+    req.on("data",chunk=>{raw+=chunk;if(Buffer.byteLength(raw,"utf8")>maxBytes){reject(new Error("Request body too large"));req.destroy();}});
     req.on("end",()=>{if(!raw.trim())return resolve({});try{resolve(JSON.parse(raw));}catch(_){reject(new Error("Invalid JSON body"));}});
     req.on("error",reject);
   });
@@ -147,6 +147,16 @@ module.exports = function startDashboardApi(port, getStatus, controls = {}) {
         requestHostOrigin
       });
       return send(res, 403, { ok: false, error: "Dashboard origin not allowed" });
+    }
+
+    const publicDashboardRead = req.method === "GET" && [
+      "/api/dashboard/status", "/api/dashboard/health", "/api/dashboard/events"
+    ].includes(url.pathname);
+    const ownerManagedRoute = url.pathname.startsWith("/api/dashboard/") &&
+      !publicDashboardRead && !url.pathname.startsWith("/api/dashboard/security/") &&
+      !url.pathname.startsWith("/api/dashboard/raid/");
+    if (ownerManagedRoute && (!licenseGuard || !licenseGuard.dashboardAuthorized(req))) {
+      return send(res, 401, { ok: false, error: "Valid X-ECLIPSE-DASHBOARD-KEY required for dashboard management." });
     }
 
     if (url.pathname.startsWith("/api/dashboard/raid/")) {
@@ -274,19 +284,102 @@ module.exports = function startDashboardApi(port, getStatus, controls = {}) {
       try { return send(res,200,{ok:true,groups:await controls.getGroups()}); }
       catch(error){ record("group-list-failed",{error:String(error?.message||error).slice(0,250)}); return send(res,502,{ok:false,error:error?.message||"Could not load Messenger groups"}); }
     }
+    if (req.method === "POST" && url.pathname === "/api/dashboard/setnn/mass") {
+      if (typeof controls.massSetNickname !== "function") return send(res, 503, { ok: false, error: "Mass SetNN is unavailable." });
+      if (typeof controls.isLicensed === "function" && !controls.isLicensed()) return send(res, 403, { ok: false, error: "This installation is not authorized." });
+      try {
+        const body = await readJson(req);
+        const result = await controls.massSetNickname(body.threadID, body.userIDs, body.nickname);
+        return send(res, 200, { ok: true, result });
+      } catch (error) {
+        return send(res, 400, { ok: false, error: error.message || "Mass SetNN failed." });
+      }
+    }
+
+    const countdown = controls.countdown;
+    if (url.pathname.startsWith("/api/dashboard/countdown/")) {
+      if (!countdown) return send(res, 503, { ok: false, error: "Countdown controls are unavailable." });
+      if (typeof controls.isLicensed === "function" && !controls.isLicensed()) return send(res, 403, { ok: false, error: "This installation is not authorized." });
+      try {
+        if (req.method === "GET" && url.pathname === "/api/dashboard/countdown/receipt") {
+          return send(res, 200, { ok: true, settings: await countdown.getReceiptSettings() });
+        }
+        if (req.method === "POST" && url.pathname === "/api/dashboard/countdown/receipt") {
+          const body = await readJson(req);
+          const settings = await countdown.updateReceiptSettings(body);
+          return send(res, 200, { ok: true, settings });
+        }
+        if (req.method === "GET" && url.pathname === "/api/dashboard/countdown/status") {
+          return send(res, 200, { ok: true, active: countdown.getActive() });
+        }
+        if (req.method === "GET" && url.pathname === "/api/dashboard/countdown/history") {
+          return send(res, 200, { ok: true, history: await countdown.getHistory() });
+        }
+        if (req.method === "GET" && url.pathname === "/api/dashboard/countdown/group") {
+          const threadID = String(url.searchParams.get("threadID") || "").trim();
+          if (!threadID) return send(res, 400, { ok: false, error: "A group is required." });
+          return send(res, 200, { ok: true, group: await countdown.getGroup(threadID) });
+        }
+        if (req.method === "POST" && url.pathname === "/api/dashboard/countdown/group") {
+          const body = await readJson(req);
+          if (!body.threadID) return send(res, 400, { ok: false, error: "A group is required." });
+          const group = await countdown.updateGroup(body.threadID, body);
+          return send(res, 200, { ok: true, group });
+        }
+      } catch (error) {
+        return send(res, 400, { ok: false, error: error.message || "Countdown request failed." });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/dashboard/group-members") {
+      if (typeof controls.getGroupMembers !== "function") return send(res, 501, { ok: false, error: "Messenger member lookup is unavailable" });
+      try {
+        const threadID = String(url.searchParams.get("threadID") || "").trim();
+        if (!threadID || threadID.length > 128) return send(res, 400, { ok: false, error: "A valid group is required." });
+        const members = await controls.getGroupMembers(threadID);
+        return send(res, 200, { ok: true, threadID, members });
+      } catch (error) {
+        return send(res, 502, { ok: false, error: error.message || "Could not load group members." });
+      }
+    }
     if (req.method === "GET" && url.pathname === "/api/dashboard/settings") {
       if (typeof controls.getSettings !== "function") return send(res,501,{ok:false,error:"Settings unavailable"});
-      return send(res,200,{ok:true,settings:controls.getSettings()});
+      return send(res,200,{ok:true,settings:await controls.getSettings()});
     }
     if (req.method === "POST" && url.pathname === "/api/dashboard/settings/reaction") {
       if (typeof controls.updateReaction !== "function") return send(res,501,{ok:false,error:"Reaction settings unavailable"});
-      try { const body=await readJson(req); const reaction=controls.updateReaction(body); record("reaction-settings-updated",{enabled:reaction.enabled,target:reaction.target}); return send(res,200,{ok:true,reaction}); }
+      try { const body=await readJson(req); const reaction=await controls.updateReaction(body); record("reaction-settings-updated",{enabled:reaction.enabled,target:reaction.target,targetMode:reaction.targetMode}); return send(res,200,{ok:true,reaction}); }
       catch(error){return send(res,400,{ok:false,error:error.message||"Could not save reaction settings"});}
     }
     if (req.method === "POST" && url.pathname === "/api/dashboard/settings/group") {
       if (typeof controls.updateGroup !== "function") return send(res,501,{ok:false,error:"Group settings unavailable"});
       try { const body=await readJson(req); const group=controls.updateGroup(body.threadID,body); record("group-settings-updated",{thread_id:group.threadID,banat_mode:group.banatMode}); return send(res,200,{ok:true,group}); }
       catch(error){return send(res,400,{ok:false,error:error.message||"Could not save group settings"});}
+    }
+
+    if (url.pathname.startsWith("/api/dashboard/spam/")) {
+      const spam = controls.spamMode;
+      if (!spam) return send(res, 503, { ok: false, error: "Spam Mode is unavailable." });
+      if (typeof controls.isLicensed === "function" && !controls.isLicensed()) return send(res, 403, { ok: false, error: "This installation is not authorized." });
+      try {
+        if (req.method === "GET" && url.pathname === "/api/dashboard/spam/status") {
+          return send(res, 200, { ok: true, runs: spam.getStatus() });
+        }
+        if (req.method === "POST" && url.pathname === "/api/dashboard/spam/start") {
+          const body = await readJson(req, 2 * 1024 * 1024);
+          const result = await spam.start(body);
+          record("spam-mode-started", { thread_id: result.threadID, interval_seconds: result.intervalSeconds, mode: result.mode, total_messages: result.totalMessages, numbered: true });
+          return send(res, 200, { ok: true, result });
+        }
+        if (req.method === "POST" && url.pathname === "/api/dashboard/spam/stop") {
+          const body = await readJson(req);
+          const result = spam.stop(body.threadID);
+          record("spam-mode-stopped", { thread_id: String(body.threadID || "") });
+          return send(res, 200, { ok: true, result });
+        }
+      } catch (error) {
+        return send(res, 400, { ok: false, error: error.message || "Spam Mode request failed." });
+      }
     }
 
     if (req.method === "POST" && url.pathname === "/api/dashboard/bot/start") {

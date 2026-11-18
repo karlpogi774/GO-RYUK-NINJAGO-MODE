@@ -18,7 +18,7 @@
  * No Messenger API, queues, or timers live here.
  */
 
-const DEFAULT_MAX_DELAY_MS = 6500;
+const DEFAULT_MAX_DELAY_MS = 20000; // ✅ PALIT: 20 segundo na
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -144,18 +144,13 @@ function typingCadenceMs(text, context = {}, options = {}) {
 
   let delay = (value.length / cps) * 1000;
 
-  // More complex words take a little longer to type.
   delay += complexity * words.length * 55;
-
-  // Natural pauses around punctuation.
   delay += (value.match(/,/g) || []).length * 45;
   delay += punctuationPauseMs(value);
   delay += (value.match(/[!?]/g) || []).length * 75;
   delay += (value.match(/[;:]/g) || []).length * 55;
   delay += (value.match(/\./g) || []).length * 55;
   delay += (value.match(/\.\.\./g) || []).length * 120;
-
-  // Emoji are not typed like normal letters and add small selection/placement time.
   delay += Math.min(6, emojiCount) * 12;
 
   const mode = normalizeMode(context);
@@ -166,7 +161,6 @@ function typingCadenceMs(text, context = {}, options = {}) {
   if (momentum >= 4) delay *= 0.88;
   else if (momentum >= 3) delay *= 0.94;
 
-  // Recent incoming activity can make the response feel quicker.
   const incomingWords = Math.max(
     0,
     Number(context.incomingWords) || countWords(context.incomingText || "")
@@ -251,3 +245,4 @@ module.exports = {
   punctuationPauseMs,
   calculateHumanDelay,
 };
+                 
