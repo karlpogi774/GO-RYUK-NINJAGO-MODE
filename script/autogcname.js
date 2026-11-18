@@ -15,7 +15,7 @@ module.exports.config = {
 
 // ===== SETTINGS =====
 const ENABLED_BY_DEFAULT = true;       // ✅ AYAW NA AGAD PAG BUKAS NG BOT
-const CHANGE_DELAY = 2000;             // ⏱️ 2 segundo — palitan mo kung gusto mo
+const CHANGE_DELAY = 15000;             // ⏱️ 15 segundo — palitan mo kung gusto mo
 
 // ===== MGA PANGALAN NG GC — DAGDAGAN MO KUNG GUSTO MO =====
 const GC_NAMES = [
